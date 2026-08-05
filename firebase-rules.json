@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "clb31tq": {
+      "live-score": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}

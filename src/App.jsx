@@ -43,7 +43,7 @@ if (hasFirebaseConfig) {
 }
 
 const DB_PATH = 'clb31tq/live-score/current';
-const ADMIN_PARAM = 'admin';
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '31TQ2026';
 
 const initialMatches = [
   { id: 1, table: 'Bàn 1', round: 'Vòng bảng', playerA: 'VĐV A1', playerB: 'VĐV B1', scoreA: 0, scoreB: 0, setA: 0, setB: 0, status: 'Đang thi đấu' },
@@ -62,8 +62,7 @@ const defaultData = {
 
 function getInitialAdminMode() {
   if (typeof window === 'undefined') return false;
-  const params = new URLSearchParams(window.location.search);
-  return params.get(ADMIN_PARAM) === '1';
+  return sessionStorage.getItem('clb31tq-admin-auth') === '1';
 }
 
 function getViewerLink() {
@@ -73,7 +72,7 @@ function getViewerLink() {
 
 function getAdminLink() {
   if (typeof window === 'undefined') return '';
-  return `${window.location.origin}${window.location.pathname}?admin=1`;
+  return `${window.location.origin}${window.location.pathname}`;
 }
 
 function classNames(...items) {
@@ -206,6 +205,22 @@ export default function App() {
     } catch {
       setCopied('Lỗi copy');
       setTimeout(() => setCopied(''), 1500);
+    }
+  };
+
+  const handleAdminToggle = () => {
+    if (adminMode) {
+      sessionStorage.removeItem('clb31tq-admin-auth');
+      setAdminMode(false);
+      return;
+    }
+
+    const pwd = window.prompt('Nhập mật khẩu Admin để nhập điểm');
+    if (pwd === ADMIN_PASSWORD) {
+      sessionStorage.setItem('clb31tq-admin-auth', '1');
+      setAdminMode(true);
+    } else if (pwd !== null) {
+      window.alert('Sai mật khẩu Admin');
     }
   };
 
@@ -347,8 +362,8 @@ export default function App() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <button onClick={() => setAdminMode(!adminMode)} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-slate-950 hover:bg-yellow-50">
-                  {adminMode ? <ShieldCheck size={16}/> : <Eye size={16}/>} {adminMode ? 'Admin nhập điểm' : 'Chế độ xem'}
+                <button onClick={handleAdminToggle} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-slate-950 hover:bg-yellow-50">
+                  {adminMode ? <ShieldCheck size={16}/> : <Eye size={16}/>} {adminMode ? 'Thoát Admin' : 'Admin'}
                 </button>
                 <button onClick={() => setTvMode(!tvMode)} className="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 font-bold text-white hover:bg-slate-800">
                   <Monitor size={16}/>{tvMode ? 'Tắt TV mode' : 'TV mode'}
@@ -363,7 +378,7 @@ export default function App() {
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
                   <Edit3 size={16}/>
-                  {adminMode ? 'Bấm trực tiếp vào tên VĐV, bàn, vòng đấu để sửa. Link admin chỉ gửi cho người nhập điểm.' : 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'}
+                  {adminMode ? 'Bấm trực tiếp vào tên VĐV, bàn, vòng đấu để sửa. Khi xong nên bấm Thoát Admin.' : 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {filters.map(f => (
@@ -374,7 +389,7 @@ export default function App() {
 
               <div className="grid gap-2 rounded-2xl bg-slate-100 p-3 text-sm font-semibold text-slate-700 lg:grid-cols-2">
                 <button className="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2" onClick={() => copyText(getViewerLink(), 'viewer')}><Copy size={15}/> Copy link ACE xem {copied === 'viewer' && '✓'}</button>
-                <button className="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2" onClick={() => copyText(getAdminLink(), 'admin')}><Copy size={15}/> Copy link nhập điểm {copied === 'admin' && '✓'}</button>
+                <button className="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2" onClick={() => copyText(getAdminLink(), 'admin')}><Copy size={15}/> Copy link Admin {copied === 'admin' && '✓'}</button>
               </div>
             </div>
           )}
@@ -385,7 +400,7 @@ export default function App() {
         </div>
 
         <div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
-          <div className="flex items-center justify-center gap-2"><Table2 size={16}/> Link ACE xem dùng link thường. Link nhập điểm dùng thêm ?admin=1. Khi đã cấu hình Firebase, mọi thiết bị sẽ cập nhật realtime.</div>
+          <div className="flex items-center justify-center gap-2"><Table2 size={16}/> Link ACE xem dùng link thường. Muốn nhập điểm, bấm Admin và nhập mật khẩu. Khi đã cấu hình Firebase, mọi thiết bị sẽ cập nhật realtime.</div>
         </div>
       </div>
     </div>

@@ -1,14 +1,13 @@
 # CLB BB 31 TÂN QUÝ - LIVE SCORE
 
-<<<<<<< HEAD
 Bảng tỷ số trực tiếp cho CLB BB 31 Tân Quý, dùng cho 4 bàn thi đấu, TV Mode và link điện thoại cho ACE theo dõi.
 
 ## Link sử dụng sau khi deploy
 
 - Link ACE xem: `https://clb31tq-live-score.vercel.app`
-- Link nhập điểm: `https://clb31tq-live-score.vercel.app?admin=1`
+- Link Admin: `https://clb31tq-live-score.vercel.app` rồi bấm nút **Admin** và nhập mật khẩu.
 
-Chỉ gửi link có `?admin=1` cho người phụ trách nhập điểm.
+Link xem và link Admin là một link. Người nhập điểm cần mật khẩu Admin.
 
 ## Chạy thử trên máy
 
@@ -78,26 +77,13 @@ Lưu ý: Quy tắc này phù hợp dùng nhanh cho giải nội bộ. Nếu dùn
 - Copy nhanh link xem và link nhập điểm.
 - Firebase Realtime Database để đồng bộ nhiều thiết bị.
 - Nếu chưa cấu hình Firebase, app vẫn chạy demo bằng localStorage nhưng không đồng bộ nhiều máy.
-=======
-Bảng tỷ số trực tiếp dành cho các giải đấu của CLB BB 31 Tân Quý.
 
-## Tính năng
+## Mật khẩu Admin
 
-- Cập nhật tỷ số trực tiếp
-- Hỗ trợ nhiều bàn thi đấu
-- Hiển thị TV Mode
-- Theo dõi trên điện thoại
-- Giao diện tối ưu cho giải đấu bóng bàn
+Thêm biến môi trường trên Vercel:
 
-## Công nghệ
+```env
+VITE_ADMIN_PASSWORD=31TQ2026
+```
 
-- React
-- Vite
-- TailwindCSS
-- Firebase Realtime Database
-- Vercel
-
-## Demo
-
-https://clb31tq-live-score.vercel.app
->>>>>>> b75e06ac78dc353868a425122566a61ba4964acd
+Sau khi đổi mật khẩu trên Vercel, cần Redeploy để nhận mật khẩu mới.

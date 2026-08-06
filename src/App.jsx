@@ -16,6 +16,7 @@ import {
   Eye,
   ShieldCheck,
   Copy,
+  CheckCircle2,
 } from 'lucide-react';
 
 const firebaseConfig = {
@@ -30,10 +31,10 @@ const firebaseConfig = {
 
 const hasFirebaseConfig = Boolean(
   firebaseConfig.apiKey &&
-  firebaseConfig.authDomain &&
-  firebaseConfig.databaseURL &&
-  firebaseConfig.projectId &&
-  firebaseConfig.appId
+    firebaseConfig.authDomain &&
+    firebaseConfig.databaseURL &&
+    firebaseConfig.projectId &&
+    firebaseConfig.appId
 );
 
 let database = null;
@@ -46,10 +47,58 @@ const DB_PATH = 'clb31tq/live-score/current';
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '31TQ2026';
 
 const initialMatches = [
-  { id: 1, table: 'Bàn 1', round: 'Vòng bảng', playerA: 'VĐV A1', playerB: 'VĐV B1', scoreA: 0, scoreB: 0, setA: 0, setB: 0, status: 'Đang thi đấu' },
-  { id: 2, table: 'Bàn 2', round: 'Vòng bảng', playerA: 'VĐV A2', playerB: 'VĐV B2', scoreA: 0, scoreB: 0, setA: 0, setB: 0, status: 'Chuẩn bị' },
-  { id: 3, table: 'Bàn 3', round: 'Vòng bảng', playerA: 'VĐV A3', playerB: 'VĐV B3', scoreA: 0, scoreB: 0, setA: 0, setB: 0, status: 'Chuẩn bị' },
-  { id: 4, table: 'Bàn 4', round: 'Vòng bảng', playerA: 'VĐV A4', playerB: 'VĐV B4', scoreA: 0, scoreB: 0, setA: 0, setB: 0, status: 'Chuẩn bị' },
+  {
+    id: 1,
+    table: 'Bàn 1',
+    round: 'Vòng bảng',
+    playerA: 'VĐV A1',
+    playerB: 'VĐV B1',
+    scoreA: 0,
+    scoreB: 0,
+    setA: 0,
+    setB: 0,
+    setHistory: [],
+    status: 'Đang thi đấu',
+  },
+  {
+    id: 2,
+    table: 'Bàn 2',
+    round: 'Vòng bảng',
+    playerA: 'VĐV A2',
+    playerB: 'VĐV B2',
+    scoreA: 0,
+    scoreB: 0,
+    setA: 0,
+    setB: 0,
+    setHistory: [],
+    status: 'Chuẩn bị',
+  },
+  {
+    id: 3,
+    table: 'Bàn 3',
+    round: 'Vòng bảng',
+    playerA: 'VĐV A3',
+    playerB: 'VĐV B3',
+    scoreA: 0,
+    scoreB: 0,
+    setA: 0,
+    setB: 0,
+    setHistory: [],
+    status: 'Chuẩn bị',
+  },
+  {
+    id: 4,
+    table: 'Bàn 4',
+    round: 'Vòng bảng',
+    playerA: 'VĐV A4',
+    playerB: 'VĐV B4',
+    scoreA: 0,
+    scoreB: 0,
+    setA: 0,
+    setB: 0,
+    setHistory: [],
+    status: 'Chuẩn bị',
+  },
 ];
 
 const defaultData = {
@@ -96,7 +145,14 @@ export default function App() {
       const saved = localStorage.getItem('clb31tq-live-score');
       if (saved) {
         try {
-          setData(JSON.parse(saved));
+          const parsed = JSON.parse(saved);
+          setData({
+            ...parsed,
+            matches: (parsed.matches || initialMatches).map(m => ({
+              ...m,
+              setHistory: m.setHistory || [],
+            })),
+          });
         } catch {
           setData(defaultData);
         }
@@ -107,20 +163,30 @@ export default function App() {
     }
 
     const scoreRef = ref(database, DB_PATH);
-    const unsubscribe = onValue(scoreRef, snapshot => {
-      const value = snapshot.val();
-      if (value) {
-        setData(value);
-      } else {
-        set(scoreRef, defaultData);
-        setData(defaultData);
+    const unsubscribe = onValue(
+      scoreRef,
+      snapshot => {
+        const value = snapshot.val();
+        if (value) {
+          setData({
+            ...value,
+            matches: (value.matches || initialMatches).map(m => ({
+              ...m,
+              setHistory: m.setHistory || [],
+            })),
+          });
+        } else {
+          set(scoreRef, defaultData);
+          setData(defaultData);
+        }
+        setConnected(true);
+        hydrated.current = true;
+      },
+      () => {
+        setConnected(false);
+        hydrated.current = true;
       }
-      setConnected(true);
-      hydrated.current = true;
-    }, () => {
-      setConnected(false);
-      hydrated.current = true;
-    });
+    );
 
     return () => unsubscribe();
   }, []);
@@ -148,7 +214,7 @@ export default function App() {
 
   const updateMatch = (id, field, value) => {
     if (!adminMode) return;
-    const matches = data.matches.map(m => m.id === id ? { ...m, [field]: value } : m);
+    const matches = data.matches.map(m => (m.id === id ? { ...m, [field]: value } : m));
     saveData({ ...data, matches });
   };
 
@@ -172,9 +238,54 @@ export default function App() {
     saveData({ ...data, matches });
   };
 
+  const finishSet = id => {
+    if (!adminMode) return;
+
+    const matches = data.matches.map(m => {
+      if (m.id !== id) return m;
+
+      const scoreA = Number(m.scoreA || 0);
+      const scoreB = Number(m.scoreB || 0);
+
+      if (scoreA === 0 && scoreB === 0) {
+        window.alert('Set hiện tại đang 0-0 nên chưa lưu được.');
+        return m;
+      }
+
+      if (scoreA === scoreB) {
+        window.alert('Tỷ số đang hòa, chưa thể kết thúc set.');
+        return m;
+      }
+
+      const nextSetHistory = [...(m.setHistory || []), { scoreA, scoreB }];
+
+      return {
+        ...m,
+        scoreA: 0,
+        scoreB: 0,
+        setA: scoreA > scoreB ? Number(m.setA || 0) + 1 : Number(m.setA || 0),
+        setB: scoreB > scoreA ? Number(m.setB || 0) + 1 : Number(m.setB || 0),
+        setHistory: nextSetHistory,
+      };
+    });
+
+    saveData({ ...data, matches });
+  };
+
   const resetScore = id => {
     if (!adminMode) return;
-    const matches = data.matches.map(m => m.id === id ? { ...m, scoreA: 0, scoreB: 0, setA: 0, setB: 0 } : m);
+    const matches = data.matches.map(m =>
+      m.id === id
+        ? {
+            ...m,
+            scoreA: 0,
+            scoreB: 0,
+            setA: 0,
+            setB: 0,
+            setHistory: [],
+          }
+        : m
+    );
     saveData({ ...data, matches });
   };
 
@@ -182,18 +293,22 @@ export default function App() {
     if (!adminMode) return;
     const current = data.matches || [];
     const nextId = current.length ? Math.max(...current.map(m => Number(m.id))) + 1 : 1;
-    const matches = [...current, {
-      id: nextId,
-      table: `Bàn ${((nextId - 1) % 4) + 1}`,
-      round: 'Vòng bảng',
-      playerA: `VĐV A${nextId}`,
-      playerB: `VĐV B${nextId}`,
-      scoreA: 0,
-      scoreB: 0,
-      setA: 0,
-      setB: 0,
-      status: 'Chuẩn bị',
-    }];
+    const matches = [
+      ...current,
+      {
+        id: nextId,
+        table: `Bàn ${((nextId - 1) % 4) + 1}`,
+        round: 'Vòng bảng',
+        playerA: `VĐV A${nextId}`,
+        playerB: `VĐV B${nextId}`,
+        scoreA: 0,
+        scoreB: 0,
+        setA: 0,
+        setB: 0,
+        setHistory: [],
+        status: 'Chuẩn bị',
+      },
+    ];
     saveData({ ...data, matches });
   };
 
@@ -230,26 +345,48 @@ export default function App() {
     return 'bg-amber-400 text-slate-950';
   };
 
-  const lastUpdated = data.updatedAt ? new Date(data.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--:--';
+  const lastUpdated = data.updatedAt
+    ? new Date(data.updatedAt).toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    : '--:--:--';
 
   const MatchCard = ({ match }) => {
     const leaderA = Number(match.scoreA) > Number(match.scoreB);
     const leaderB = Number(match.scoreB) > Number(match.scoreA);
     const canEdit = adminMode && !tvMode;
+    const setHistoryText = (match.setHistory || []).map(s => `${s.scoreA}-${s.scoreB}`).join(' | ');
 
     return (
-      <div className={classNames('overflow-hidden rounded-3xl border border-white/10 bg-white shadow-2xl', match.status === 'Đang thi đấu' && 'ring-4 ring-red-500/40')}>
+      <div
+        className={classNames(
+          'overflow-hidden rounded-3xl border border-white/10 bg-white shadow-2xl',
+          match.status === 'Đang thi đấu' && 'ring-4 ring-red-500/40'
+        )}
+      >
         <div className="flex items-center justify-between bg-slate-950 px-4 py-3 text-white">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-600 text-lg font-black">{match.id}</div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-600 text-lg font-black">
+              {match.id}
+            </div>
             <div>
               {canEdit ? (
-                <input value={match.table} onChange={e => updateMatch(match.id, 'table', e.target.value)} className="w-28 bg-transparent text-lg font-black outline-none" />
+                <input
+                  value={match.table}
+                  onChange={e => updateMatch(match.id, 'table', e.target.value)}
+                  className="w-28 bg-transparent text-lg font-black outline-none"
+                />
               ) : (
                 <div className="text-lg font-black">{match.table}</div>
               )}
               {canEdit ? (
-                <input value={match.round} onChange={e => updateMatch(match.id, 'round', e.target.value)} className="block w-44 bg-transparent text-xs text-slate-300 outline-none" />
+                <input
+                  value={match.round}
+                  onChange={e => updateMatch(match.id, 'round', e.target.value)}
+                  className="block w-44 bg-transparent text-xs text-slate-300 outline-none"
+                />
               ) : (
                 <div className="text-xs font-semibold text-slate-300">{match.round}</div>
               )}
@@ -257,19 +394,36 @@ export default function App() {
           </div>
 
           {canEdit ? (
-            <select value={match.status} onChange={e => updateMatch(match.id, 'status', e.target.value)} className={classNames('rounded-full px-3 py-1 text-sm font-bold outline-none', statusClass(match.status))}>
-              {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
+            <select
+              value={match.status}
+              onChange={e => updateMatch(match.id, 'status', e.target.value)}
+              className={classNames('rounded-full px-3 py-1 text-sm font-bold outline-none', statusClass(match.status))}
+            >
+              {statusOptions.map(s => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
             </select>
           ) : (
-            <div className={classNames('rounded-full px-3 py-1 text-sm font-bold', statusClass(match.status))}>{match.status}</div>
+            <div className={classNames('rounded-full px-3 py-1 text-sm font-bold', statusClass(match.status))}>
+              {match.status}
+            </div>
           )}
         </div>
 
         <div className="grid grid-cols-[1fr_54px_1fr] bg-white sm:grid-cols-[1fr_76px_1fr]">
           <div className={classNames('p-3 sm:p-5', leaderA && 'bg-red-50')}>
-            <div className="mb-2 flex items-center gap-2 text-slate-500"><Users size={16} /><span className="text-xs font-bold uppercase">VĐV / Đội A</span></div>
+            <div className="mb-2 flex items-center gap-2 text-slate-500">
+              <Users size={16} />
+              <span className="text-xs font-bold uppercase">VĐV / Đội A</span>
+            </div>
             {canEdit ? (
-              <input value={match.playerA} onChange={e => updateMatch(match.id, 'playerA', e.target.value)} className="mb-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-lg font-black text-slate-900 outline-none focus:border-red-500 sm:text-xl" />
+              <input
+                value={match.playerA}
+                onChange={e => updateMatch(match.id, 'playerA', e.target.value)}
+                className="mb-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-lg font-black text-slate-900 outline-none focus:border-red-500 sm:text-xl"
+              />
             ) : (
               <div className="mb-4 min-h-12 text-xl font-black text-slate-950 sm:text-2xl">{match.playerA}</div>
             )}
@@ -278,31 +432,61 @@ export default function App() {
               <div>
                 <div className="text-xs font-bold text-slate-500">SET</div>
                 <div className="flex items-center gap-2">
-                  {canEdit && <button className="rounded-lg border px-2 py-1" onClick={() => changeSet(match.id, 'A', -1)}><Minus size={14}/></button>}
+                  {canEdit && (
+                    <button className="rounded-lg border px-2 py-1" onClick={() => changeSet(match.id, 'A', -1)}>
+                      <Minus size={14} />
+                    </button>
+                  )}
                   <div className="min-w-9 text-center text-4xl font-black text-slate-950">{match.setA}</div>
-                  {canEdit && <button className="rounded-lg border px-2 py-1" onClick={() => changeSet(match.id, 'A', 1)}><Plus size={14}/></button>}
+                  {canEdit && (
+                    <button className="rounded-lg border px-2 py-1" onClick={() => changeSet(match.id, 'A', 1)}>
+                      <Plus size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="text-left sm:text-right">
                 <div className="text-xs font-bold text-slate-500">ĐIỂM</div>
                 <div className="flex items-center gap-2 sm:justify-end">
-                  {canEdit && <button className="rounded-lg border px-2 py-1" onClick={() => changePoint(match.id, 'A', -1)}><Minus size={14}/></button>}
-                  <div className={classNames('min-w-16 text-center text-6xl font-black tracking-tight sm:text-7xl', leaderA ? 'text-red-600' : 'text-slate-950')}>{match.scoreA}</div>
-                  {canEdit && <button className="rounded-lg bg-red-600 px-2 py-1 text-white" onClick={() => changePoint(match.id, 'A', 1)}><Plus size={14}/></button>}
+                  {canEdit && (
+                    <button className="rounded-lg border px-2 py-1" onClick={() => changePoint(match.id, 'A', -1)}>
+                      <Minus size={14} />
+                    </button>
+                  )}
+                  <div
+                    className={classNames(
+                      'min-w-16 text-center text-6xl font-black tracking-tight sm:text-7xl',
+                      leaderA ? 'text-red-600' : 'text-slate-950'
+                    )}
+                  >
+                    {match.scoreA}
+                  </div>
+                  {canEdit && (
+                    <button className="rounded-lg bg-red-600 px-2 py-1 text-white" onClick={() => changePoint(match.id, 'A', 1)}>
+                      <Plus size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
           <div className="flex flex-col items-center justify-center bg-slate-100 px-2 text-slate-500">
-            <Trophy className="mb-1 text-amber-500" size={26}/>
+            <Trophy className="mb-1 text-amber-500" size={26} />
             <div className="text-xl font-black sm:text-2xl">VS</div>
           </div>
 
           <div className={classNames('p-3 sm:p-5', leaderB && 'bg-blue-50')}>
-            <div className="mb-2 flex items-center justify-end gap-2 text-slate-500"><span className="text-xs font-bold uppercase">VĐV / Đội B</span><Users size={16} /></div>
+            <div className="mb-2 flex items-center justify-end gap-2 text-slate-500">
+              <span className="text-xs font-bold uppercase">VĐV / Đội B</span>
+              <Users size={16} />
+            </div>
             {canEdit ? (
-              <input value={match.playerB} onChange={e => updateMatch(match.id, 'playerB', e.target.value)} className="mb-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-right text-lg font-black text-slate-900 outline-none focus:border-blue-500 sm:text-xl" />
+              <input
+                value={match.playerB}
+                onChange={e => updateMatch(match.id, 'playerB', e.target.value)}
+                className="mb-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-right text-lg font-black text-slate-900 outline-none focus:border-blue-500 sm:text-xl"
+              />
             ) : (
               <div className="mb-4 min-h-12 text-right text-xl font-black text-slate-950 sm:text-2xl">{match.playerB}</div>
             )}
@@ -311,26 +495,69 @@ export default function App() {
               <div>
                 <div className="text-xs font-bold text-slate-500">ĐIỂM</div>
                 <div className="flex items-center gap-2">
-                  {canEdit && <button className="rounded-lg border px-2 py-1" onClick={() => changePoint(match.id, 'B', -1)}><Minus size={14}/></button>}
-                  <div className={classNames('min-w-16 text-center text-6xl font-black tracking-tight sm:text-7xl', leaderB ? 'text-blue-600' : 'text-slate-950')}>{match.scoreB}</div>
-                  {canEdit && <button className="rounded-lg bg-blue-600 px-2 py-1 text-white" onClick={() => changePoint(match.id, 'B', 1)}><Plus size={14}/></button>}
+                  {canEdit && (
+                    <button className="rounded-lg border px-2 py-1" onClick={() => changePoint(match.id, 'B', -1)}>
+                      <Minus size={14} />
+                    </button>
+                  )}
+                  <div
+                    className={classNames(
+                      'min-w-16 text-center text-6xl font-black tracking-tight sm:text-7xl',
+                      leaderB ? 'text-blue-600' : 'text-slate-950'
+                    )}
+                  >
+                    {match.scoreB}
+                  </div>
+                  {canEdit && (
+                    <button className="rounded-lg bg-blue-600 px-2 py-1 text-white" onClick={() => changePoint(match.id, 'B', 1)}>
+                      <Plus size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="text-right">
                 <div className="text-xs font-bold text-slate-500">SET</div>
                 <div className="flex items-center justify-end gap-2">
-                  {canEdit && <button className="rounded-lg border px-2 py-1" onClick={() => changeSet(match.id, 'B', -1)}><Minus size={14}/></button>}
+                  {canEdit && (
+                    <button className="rounded-lg border px-2 py-1" onClick={() => changeSet(match.id, 'B', -1)}>
+                      <Minus size={14} />
+                    </button>
+                  )}
                   <div className="min-w-9 text-center text-4xl font-black text-slate-950">{match.setB}</div>
-                  {canEdit && <button className="rounded-lg border px-2 py-1" onClick={() => changeSet(match.id, 'B', 1)}><Plus size={14}/></button>}
+                  {canEdit && (
+                    <button className="rounded-lg border px-2 py-1" onClick={() => changeSet(match.id, 'B', 1)}>
+                      <Plus size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
+        {(match.setHistory || []).length > 0 && (
+          <div className="border-t bg-yellow-50 px-4 py-3 text-center">
+            <div className="text-xs font-black uppercase tracking-wide text-slate-500">Lịch sử set</div>
+            <div className="mt-1 text-lg font-black text-slate-800 sm:text-xl">{setHistoryText}</div>
+          </div>
+        )}
+
         {canEdit && (
-          <div className="flex items-center justify-end gap-2 border-t bg-slate-50 p-3">
-            <button className="flex items-center gap-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700" onClick={() => resetScore(match.id)}><RotateCcw size={15}/> Reset</button>
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t bg-slate-50 p-3">
+            <button
+              className="flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-700"
+              onClick={() => finishSet(match.id)}
+            >
+              <CheckCircle2 size={15} />
+              Kết thúc Set
+            </button>
+            <button
+              className="flex items-center gap-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-white"
+              onClick={() => resetScore(match.id)}
+            >
+              <RotateCcw size={15} />
+              Reset
+            </button>
           </div>
         )}
       </div>
@@ -345,30 +572,56 @@ export default function App() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0 flex-1">
                 {adminMode && !tvMode ? (
-                  <input value={data.clubTitle} onChange={e => updateField('clubTitle', e.target.value)} className="w-full bg-transparent text-2xl font-black tracking-wide outline-none md:text-4xl" />
+                  <input
+                    value={data.clubTitle}
+                    onChange={e => updateField('clubTitle', e.target.value)}
+                    className="w-full bg-transparent text-2xl font-black tracking-wide outline-none md:text-4xl"
+                  />
                 ) : (
                   <h1 className="text-2xl font-black tracking-wide md:text-4xl">{data.clubTitle}</h1>
                 )}
                 {adminMode && !tvMode ? (
-                  <input value={data.eventTitle} onChange={e => updateField('eventTitle', e.target.value)} className="mt-1 w-full bg-transparent text-xl font-black tracking-wide outline-none md:text-3xl" />
+                  <input
+                    value={data.eventTitle}
+                    onChange={e => updateField('eventTitle', e.target.value)}
+                    className="mt-1 w-full bg-transparent text-xl font-black tracking-wide outline-none md:text-3xl"
+                  />
                 ) : (
                   <h2 className="mt-1 text-xl font-black tracking-wide md:text-3xl">{data.eventTitle}</h2>
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-sm font-semibold text-yellow-100">
-                  <span className="flex items-center gap-2"><Clock size={16}/> {data.note}</span>
-                  <span className="flex items-center gap-2">{connected ? <Wifi size={16}/> : <WifiOff size={16}/>} {connected ? 'Realtime Online' : hasFirebaseConfig ? 'Đang kết nối' : 'Demo local'}</span>
+                  <span className="flex items-center gap-2">
+                    <Clock size={16} /> {data.note}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {connected ? <Wifi size={16} /> : <WifiOff size={16} />}{' '}
+                    {connected ? 'Realtime Online' : hasFirebaseConfig ? 'Đang kết nối' : 'Demo local'}
+                  </span>
                   <span>Cập nhật: {lastUpdated}</span>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <button onClick={handleAdminToggle} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-slate-950 hover:bg-yellow-50">
-                  {adminMode ? <ShieldCheck size={16}/> : <Eye size={16}/>} {adminMode ? 'Thoát Admin' : 'Admin'}
+                <button
+                  onClick={handleAdminToggle}
+                  className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-slate-950 hover:bg-yellow-50"
+                >
+                  {adminMode ? <ShieldCheck size={16} /> : <Eye size={16} />}
+                  {adminMode ? 'Thoát Admin' : 'Admin'}
                 </button>
-                <button onClick={() => setTvMode(!tvMode)} className="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 font-bold text-white hover:bg-slate-800">
-                  <Monitor size={16}/>{tvMode ? 'Tắt TV mode' : 'TV mode'}
+                <button
+                  onClick={() => setTvMode(!tvMode)}
+                  className="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 font-bold text-white hover:bg-slate-800"
+                >
+                  <Monitor size={16} />
+                  {tvMode ? 'Tắt TV mode' : 'TV mode'}
                 </button>
-                {adminMode && !tvMode && <button onClick={addMatch} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-red-700 hover:bg-yellow-50"><Plus size={16}/>Thêm trận</button>}
+                {adminMode && !tvMode && (
+                  <button onClick={addMatch} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-red-700 hover:bg-yellow-50">
+                    <Plus size={16} />
+                    Thêm trận
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -377,30 +630,49 @@ export default function App() {
             <div className="space-y-3 p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
-                  <Edit3 size={16}/>
-                  {adminMode ? 'Bấm trực tiếp vào tên VĐV, bàn, vòng đấu để sửa. Khi xong nên bấm Thoát Admin.' : 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'}
+                  <Edit3 size={16} />
+                  {adminMode
+                    ? 'Bấm trực tiếp vào tên VĐV, bàn, vòng đấu để sửa. Khi xong nên bấm Thoát Admin.'
+                    : 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {filters.map(f => (
-                    <button key={f} onClick={() => setActiveFilter(f)} className={classNames('rounded-xl border px-3 py-2 text-sm font-bold', activeFilter === f ? 'border-red-600 bg-red-600 text-white' : 'border-slate-300 bg-white text-slate-700')}>{f}</button>
+                    <button
+                      key={f}
+                      onClick={() => setActiveFilter(f)}
+                      className={classNames(
+                        'rounded-xl border px-3 py-2 text-sm font-bold',
+                        activeFilter === f ? 'border-red-600 bg-red-600 text-white' : 'border-slate-300 bg-white text-slate-700'
+                      )}
+                    >
+                      {f}
+                    </button>
                   ))}
                 </div>
               </div>
 
               <div className="grid gap-2 rounded-2xl bg-slate-100 p-3 text-sm font-semibold text-slate-700 lg:grid-cols-2">
-                <button className="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2" onClick={() => copyText(getViewerLink(), 'viewer')}><Copy size={15}/> Copy link ACE xem {copied === 'viewer' && '✓'}</button>
-                <button className="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2" onClick={() => copyText(getAdminLink(), 'admin')}><Copy size={15}/> Copy link Admin {copied === 'admin' && '✓'}</button>
+                <button className="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2" onClick={() => copyText(getViewerLink(), 'viewer')}>
+                  <Copy size={15} /> Copy link ACE xem {copied === 'viewer' && '✓'}
+                </button>
+                <button className="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2" onClick={() => copyText(getAdminLink(), 'admin')}>
+                  <Copy size={15} /> Copy link Admin {copied === 'admin' && '✓'}
+                </button>
               </div>
             </div>
           )}
         </div>
 
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-          {visibleMatches.map(match => <MatchCard key={match.id} match={match} />)}
+          {visibleMatches.map(match => (
+            <MatchCard key={match.id} match={match} />
+          ))}
         </div>
 
         <div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
-          <div className="flex items-center justify-center gap-2"><Table2 size={16}/> Link ACE xem dùng link thường. Muốn nhập điểm, bấm Admin và nhập mật khẩu. Khi đã cấu hình Firebase, mọi thiết bị sẽ cập nhật realtime.</div>
+          <div className="flex items-center justify-center gap-2">
+            <Table2 size={16} /> Link ACE xem dùng link thường. Muốn nhập điểm, bấm Admin và nhập mật khẩu. Khi đã cấu hình Firebase, mọi thiết bị sẽ cập nhật realtime.
+          </div>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as XLSX from 'xlsx';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, onValue, ref, set } from 'firebase/database';
 import {
@@ -15,6 +16,11 @@ import {
   ShieldCheck,
   Copy,
   CheckCircle2,
+  Upload,
+  Trash2,
+  Save,
+  UserPlus,
+  X,
 } from 'lucide-react';
 
 const firebaseConfig = {
@@ -48,11 +54,22 @@ const SETS_TO_WIN = 3;
 
 const defaultPlayers = ['Anthony', 'Leo', 'Hico', 'Banlan', 'Minh', 'Hung'];
 
+const matchTypes = [
+  'Vòng bảng',
+  'Tứ kết',
+  'Bán kết',
+  'Chung kết',
+  'Tranh hạng 3',
+  'Giao lưu',
+  'Khác',
+];
+
 const initialMatches = [
   {
     id: 1,
     table: 'Bàn 1',
     content: 'Giao lưu',
+    customContent: '',
     playerA: 'Anthony',
     playerB: 'Leo',
     scoreA: 0,
@@ -67,6 +84,7 @@ const initialMatches = [
     id: 2,
     table: 'Bàn 2',
     content: 'Chung kết',
+    customContent: '',
     playerA: 'Hico',
     playerB: 'Banlan',
     scoreA: 0,
@@ -81,6 +99,7 @@ const initialMatches = [
     id: 3,
     table: 'Bàn 3',
     content: 'Bán kết',
+    customContent: '',
     playerA: 'Minh',
     playerB: 'Hung',
     scoreA: 0,
@@ -95,6 +114,7 @@ const initialMatches = [
     id: 4,
     table: 'Bàn 4',
     content: '',
+    customContent: '',
     playerA: '',
     playerB: '',
     scoreA: 0,
@@ -142,7 +162,11 @@ export default function App() {
   const [activeFilter, setActiveFilter] = useState('Tất cả');
   const [connected, setConnected] = useState(false);
   const [copied, setCopied] = useState('');
+  const [showPlayerManager, setShowPlayerManager] = useState(false);
+  const [editingPlayers, setEditingPlayers] = useState([]);
+  const [newPlayerName, setNewPlayerName] = useState('');
   const hydrated = useRef(false);
+  const fileInputRef = useRef(null);
 
   const statusOptions = ['Chuẩn bị', 'Đang thi đấu', 'Kết thúc'];
   const filters = ['Tất cả', 'Đang thi đấu', 'Chuẩn bị', 'Kết thúc'];
@@ -154,6 +178,7 @@ export default function App() {
       winner: m.winner || '',
       status: m.status || 'Chuẩn bị',
       content: m.content || '',
+      customContent: m.customContent || '',
       scoreA: Number(m.scoreA || 0),
       scoreB: Number(m.scoreB || 0),
       setA: Number(m.setA || 0),
@@ -164,7 +189,6 @@ export default function App() {
     if (!value) return defaultPlayers;
 
     let list = [];
-
     if (Array.isArray(value)) {
       list = value.map(p => (typeof p === 'string' ? p : p?.name));
     } else {
@@ -186,10 +210,7 @@ export default function App() {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          setData({
-            ...parsed,
-            matches: normalizeMatches(parsed.matches),
-          });
+          setData({ ...parsed, matches: normalizeMatches(parsed.matches) });
         } catch {
           setData(defaultData);
         }
@@ -205,10 +226,7 @@ export default function App() {
       snapshot => {
         const value = snapshot.val();
         if (value) {
-          setData({
-            ...value,
-            matches: normalizeMatches(value.matches),
-          });
+          setData({ ...value, matches: normalizeMatches(value.matches) });
         } else {
           set(scoreRef, defaultData);
           setData(defaultData);
@@ -245,6 +263,12 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (showPlayerManager) {
+      setEditingPlayers(players);
+    }
+  }, [showPlayerManager, players]);
+
   const saveData = async nextData => {
     const payload = { ...nextData, updatedAt: Date.now() };
     setData(payload);
@@ -270,6 +294,127 @@ export default function App() {
     if (!adminMode) return;
     const matches = data.matches.map(m => (m.id === id ? { ...m, [field]: value } : m));
     saveData({ ...data, matches });
+  };
+
+  const savePlayersToFirebase = async nextPlayers => {
+    const cleanedPlayers = nextPlayers
+      .map(name => String(name || '').trim())
+      .filter(Boolean)
+      .filter((name, index, arr) => arr.indexOf(name) === index);
+
+    const playersPayload = cleanedPlayers.reduce((acc, name, index) => {
+      const key = `p${String(index + 1).padStart(3, '0')}`;
+      acc[key] = { name };
+      return acc;
+    }, {});
+
+    if (database) {
+      await set(ref(database, PLAYERS_PATH), playersPayload);
+    }
+
+    setPlayers(cleanedPlayers);
+    return cleanedPlayers;
+  };
+
+  const getPlayerNameFromRow = row => {
+    const preferredKeys = ['Vận Động Viên', 'Vận động viên', 'VĐV', 'VDV', 'Họ tên', 'Tên', 'Name', 'name'];
+
+    for (const key of preferredKeys) {
+      if (row[key]) return String(row[key]).trim();
+    }
+
+    const values = Object.values(row)
+      .map(value => String(value || '').trim())
+      .filter(Boolean);
+
+    return values.find(value => !/^\d+(\.0)?$/.test(value)) || '';
+  };
+
+  const importPlayersFromExcel = async event => {
+    if (!adminMode) return;
+
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      const importedPlayers = rows
+        .map(getPlayerNameFromRow)
+        .map(name => name.trim())
+        .filter(Boolean)
+        .filter((name, index, arr) => arr.indexOf(name) === index);
+
+      if (!importedPlayers.length) {
+        window.alert('Không tìm thấy tên VĐV trong file Excel. Cột nên có tên: Vận Động Viên, VĐV, Họ tên hoặc Tên.');
+        return;
+      }
+
+      await savePlayersToFirebase(importedPlayers);
+      window.alert(`Đã import ${importedPlayers.length} VĐV từ Excel.`);
+    } catch (error) {
+      console.error(error);
+      window.alert('Import Excel không thành công. Anh kiểm tra lại file .xlsx, .xls hoặc .csv.');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const addPlayerToManager = () => {
+    const name = newPlayerName.trim();
+    if (!name) return;
+
+    if (editingPlayers.includes(name)) {
+      window.alert('Tên VĐV này đã có trong danh sách.');
+      return;
+    }
+
+    setEditingPlayers([...editingPlayers, name]);
+    setNewPlayerName('');
+  };
+
+  const updatePlayerInManager = (index, value) => {
+    const nextPlayers = [...editingPlayers];
+    nextPlayers[index] = value;
+    setEditingPlayers(nextPlayers);
+  };
+
+  const deletePlayerFromManager = index => {
+    const name = editingPlayers[index];
+    const confirmDelete = window.confirm(`Xóa VĐV "${name}" khỏi danh sách?`);
+    if (!confirmDelete) return;
+    setEditingPlayers(editingPlayers.filter((_, i) => i !== index));
+  };
+
+  const savePlayerManager = async () => {
+    const oldPlayers = players;
+    const newPlayers = editingPlayers
+      .map(name => String(name || '').trim())
+      .filter(Boolean)
+      .filter((name, index, arr) => arr.indexOf(name) === index);
+
+    const renameMap = {};
+    oldPlayers.forEach((oldName, index) => {
+      const newName = newPlayers[index];
+      if (oldName && newName && oldName !== newName) {
+        renameMap[oldName] = newName;
+      }
+    });
+
+    const updatedMatches = (data.matches || []).map(match => ({
+      ...match,
+      playerA: renameMap[match.playerA] || match.playerA,
+      playerB: renameMap[match.playerB] || match.playerB,
+    }));
+
+    await savePlayersToFirebase(newPlayers);
+    await saveData({ ...data, matches: updatedMatches });
+
+    setShowPlayerManager(false);
+    window.alert('Đã lưu danh sách VĐV.');
   };
 
   const changePoint = (id, side, delta) => {
@@ -356,6 +501,7 @@ export default function App() {
         id: nextId,
         table: `Bàn ${((nextId - 1) % 4) + 1}`,
         content: '',
+        customContent: '',
         playerA: players[0] || '',
         playerB: players[1] || '',
         scoreA: 0,
@@ -411,6 +557,83 @@ export default function App() {
       })
     : '--:--:--';
 
+  const PlayerManagerPanel = () => (
+    <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 shadow-inner">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-xl font-black text-emerald-800">Quản lý VĐV</div>
+          <div className="text-sm font-semibold text-slate-600">
+            Thêm, sửa hoặc xóa tên VĐV. Bấm Lưu danh sách để cập nhật Firebase.
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowPlayerManager(false)}
+          className="rounded-xl border border-slate-300 bg-white px-3 py-2 font-bold text-slate-700"
+        >
+          <X size={16} />
+        </button>
+      </div>
+
+      <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+        <input
+          value={newPlayerName}
+          onChange={e => setNewPlayerName(e.target.value)}
+          placeholder="Nhập tên VĐV mới, VD: Tuấn Anh - B1"
+          className="w-full rounded-xl border border-emerald-300 bg-white px-4 py-3 text-base font-bold outline-none focus:border-emerald-600"
+        />
+
+        <button
+          onClick={addPlayerToManager}
+          className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white hover:bg-emerald-700"
+        >
+          <UserPlus size={16} />
+          Thêm VĐV
+        </button>
+      </div>
+
+      <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
+        {editingPlayers.map((name, index) => (
+          <div key={`${name}-${index}`} className="grid gap-2 rounded-2xl bg-white p-2 shadow-sm sm:grid-cols-[1fr_auto]">
+            <input
+              value={name}
+              onChange={e => updatePlayerInManager(index, e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base font-bold outline-none focus:border-emerald-600"
+            />
+
+            <button
+              onClick={() => deletePlayerFromManager(index)}
+              className="flex items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-3 font-bold text-red-600 hover:bg-red-50"
+            >
+              <Trash2 size={16} />
+              Xóa
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <button
+          onClick={() => {
+            setEditingPlayers(players);
+            setNewPlayerName('');
+          }}
+          className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold text-slate-700"
+        >
+          Hoàn tác
+        </button>
+
+        <button
+          onClick={savePlayerManager}
+          className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white hover:bg-emerald-700"
+        >
+          <Save size={16} />
+          Lưu danh sách
+        </button>
+      </div>
+    </div>
+  );
+
   const MatchCard = ({ match }) => {
     const leaderA = Number(match.scoreA) > Number(match.scoreB);
     const leaderB = Number(match.scoreB) > Number(match.scoreA);
@@ -421,6 +644,7 @@ export default function App() {
     const winnerName =
       match.winner ||
       (Number(match.setA || 0) >= SETS_TO_WIN ? match.playerA : Number(match.setB || 0) >= SETS_TO_WIN ? match.playerB : '');
+    const displayContent = String(match.customContent || '').trim() || (match.content === 'Khác' ? '' : match.content || '');
 
     const playerAOptions = [match.playerA, ...players]
       .filter(Boolean)
@@ -447,28 +671,13 @@ export default function App() {
             </div>
             <div className="min-w-0">
               {canEdit ? (
-                <>
-                  <input
-                    value={match.table}
-                    onChange={e => updateMatch(match.id, 'table', e.target.value)}
-                    className="w-28 bg-transparent text-lg font-black outline-none"
-                  />
-                  <input
-                    value={match.content || ''}
-                    onChange={e => updateMatch(match.id, 'content', e.target.value)}
-                    placeholder="Nhập nội dung thi đấu"
-                    className="mt-1 block w-56 max-w-[55vw] bg-transparent text-sm font-bold text-yellow-300 placeholder:text-slate-400 outline-none"
-                  />
-                </>
+                <input
+                  value={match.table}
+                  onChange={e => updateMatch(match.id, 'table', e.target.value)}
+                  className="w-28 bg-transparent text-lg font-black outline-none"
+                />
               ) : (
-                <>
-                  <div className="text-lg font-black">{match.table}</div>
-                  {match.content && (
-                    <div className="mt-1 max-w-[55vw] truncate text-sm font-bold text-yellow-300">
-                      {match.content}
-                    </div>
-                  )}
-                </>
+                <div className="text-lg font-black">{match.table}</div>
               )}
             </div>
           </div>
@@ -491,6 +700,38 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {canEdit ? (
+          <div className="border-b bg-yellow-50 p-3">
+            <div className="grid gap-2 sm:grid-cols-[180px_1fr]">
+              <select
+                value={match.content || ''}
+                onChange={e => updateMatch(match.id, 'content', e.target.value)}
+                className="w-full rounded-xl border border-yellow-300 bg-white px-3 py-3 text-base font-black text-slate-900 outline-none focus:border-red-500"
+              >
+                <option value="">Chọn nội dung thi đấu</option>
+                {matchTypes.map(item => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                value={match.customContent || ''}
+                onChange={e => updateMatch(match.id, 'customContent', e.target.value)}
+                placeholder="Nội dung khác nếu cần"
+                className="w-full rounded-xl border border-yellow-300 bg-white px-3 py-3 text-base font-bold text-slate-900 outline-none focus:border-red-500"
+              />
+            </div>
+          </div>
+        ) : (
+          displayContent && (
+            <div className="border-b bg-yellow-50 px-4 py-3 text-center">
+              <div className="text-xl font-black uppercase tracking-wide text-red-700">{displayContent}</div>
+            </div>
+          )
+        )}
 
         <div className="grid grid-cols-[1fr_46px_1fr] bg-white sm:grid-cols-[1fr_64px_1fr]">
           <div className={classNames('p-3 sm:p-5', leaderA && 'bg-red-50')}>
@@ -515,28 +756,15 @@ export default function App() {
               <div className="text-xs font-bold text-slate-500">ĐIỂM</div>
               <div className="flex items-center gap-2 sm:justify-end">
                 {canEdit && (
-                  <button
-                    disabled={isFinished}
-                    className="rounded-lg border px-2 py-1 disabled:opacity-40"
-                    onClick={() => changePoint(match.id, 'A', -1)}
-                  >
+                  <button disabled={isFinished} className="rounded-lg border px-2 py-1 disabled:opacity-40" onClick={() => changePoint(match.id, 'A', -1)}>
                     <Minus size={14} />
                   </button>
                 )}
-                <div
-                  className={classNames(
-                    'min-w-16 text-center text-6xl font-black tracking-tight sm:text-7xl',
-                    leaderA ? 'text-red-600' : 'text-slate-950'
-                  )}
-                >
+                <div className={classNames('min-w-16 text-center text-6xl font-black tracking-tight sm:text-7xl', leaderA ? 'text-red-600' : 'text-slate-950')}>
                   {match.scoreA}
                 </div>
                 {canEdit && (
-                  <button
-                    disabled={isFinished}
-                    className="rounded-lg bg-red-600 px-2 py-1 text-white disabled:opacity-40"
-                    onClick={() => changePoint(match.id, 'A', 1)}
-                  >
+                  <button disabled={isFinished} className="rounded-lg bg-red-600 px-2 py-1 text-white disabled:opacity-40" onClick={() => changePoint(match.id, 'A', 1)}>
                     <Plus size={14} />
                   </button>
                 )}
@@ -546,9 +774,7 @@ export default function App() {
 
           <div className="flex flex-col items-center justify-center bg-slate-100 px-2 text-slate-500">
             <div className="text-lg font-black sm:text-2xl">VS</div>
-            <div className="mt-2 text-center text-xs font-black text-slate-700">
-              {match.setA}-{match.setB}
-            </div>
+            <div className="mt-2 text-center text-xs font-black text-slate-700">{match.setA}-{match.setB}</div>
           </div>
 
           <div className={classNames('p-3 sm:p-5', leaderB && 'bg-blue-50')}>
@@ -573,28 +799,15 @@ export default function App() {
               <div className="text-xs font-bold text-slate-500">ĐIỂM</div>
               <div className="flex items-center gap-2">
                 {canEdit && (
-                  <button
-                    disabled={isFinished}
-                    className="rounded-lg border px-2 py-1 disabled:opacity-40"
-                    onClick={() => changePoint(match.id, 'B', -1)}
-                  >
+                  <button disabled={isFinished} className="rounded-lg border px-2 py-1 disabled:opacity-40" onClick={() => changePoint(match.id, 'B', -1)}>
                     <Minus size={14} />
                   </button>
                 )}
-                <div
-                  className={classNames(
-                    'min-w-16 text-center text-6xl font-black tracking-tight sm:text-7xl',
-                    leaderB ? 'text-blue-600' : 'text-slate-950'
-                  )}
-                >
+                <div className={classNames('min-w-16 text-center text-6xl font-black tracking-tight sm:text-7xl', leaderB ? 'text-blue-600' : 'text-slate-950')}>
                   {match.scoreB}
                 </div>
                 {canEdit && (
-                  <button
-                    disabled={isFinished}
-                    className="rounded-lg bg-blue-600 px-2 py-1 text-white disabled:opacity-40"
-                    onClick={() => changePoint(match.id, 'B', 1)}
-                  >
+                  <button disabled={isFinished} className="rounded-lg bg-blue-600 px-2 py-1 text-white disabled:opacity-40" onClick={() => changePoint(match.id, 'B', 1)}>
                     <Plus size={14} />
                   </button>
                 )}
@@ -606,9 +819,7 @@ export default function App() {
         {(match.setHistory || []).length > 0 && (
           <div className="border-t bg-yellow-50 px-4 py-3 text-center">
             <div className="text-sm font-black uppercase tracking-wider text-slate-600">Lịch sử set</div>
-            <div className="mt-2 rounded-xl bg-white px-4 py-3 text-2xl font-black tracking-wider text-red-700 shadow">
-              {setHistoryText}
-            </div>
+            <div className="mt-2 rounded-xl bg-white px-4 py-3 text-2xl font-black tracking-wider text-red-700 shadow">{setHistoryText}</div>
             {isFinished && winnerName && (
               <div className="mt-3 rounded-2xl bg-emerald-600 px-4 py-3 text-2xl font-black text-white shadow">
                 Thắng trận: {winnerName} ({match.setA}-{match.setB})
@@ -627,10 +838,7 @@ export default function App() {
               <CheckCircle2 size={15} />
               Sang Set Tiếp Theo
             </button>
-            <button
-              className="flex items-center gap-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-white"
-              onClick={() => resetScore(match.id)}
-            >
+            <button className="flex items-center gap-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-white" onClick={() => resetScore(match.id)}>
               <RotateCcw size={15} />
               Reset
             </button>
@@ -648,50 +856,46 @@ export default function App() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0 flex-1">
                 {adminMode && !tvMode ? (
-                  <input
-                    value={data.clubTitle}
-                    onChange={e => updateField('clubTitle', e.target.value)}
-                    className="w-full bg-transparent text-2xl font-black tracking-wide outline-none md:text-4xl"
-                  />
+                  <input value={data.clubTitle} onChange={e => updateField('clubTitle', e.target.value)} className="w-full bg-transparent text-2xl font-black tracking-wide outline-none md:text-4xl" />
                 ) : (
                   <h1 className="text-2xl font-black tracking-wide md:text-4xl">{data.clubTitle}</h1>
                 )}
                 {adminMode && !tvMode ? (
-                  <input
-                    value={data.eventTitle}
-                    onChange={e => updateField('eventTitle', e.target.value)}
-                    className="mt-1 w-full bg-transparent text-xl font-black tracking-wide outline-none md:text-3xl"
-                  />
+                  <input value={data.eventTitle} onChange={e => updateField('eventTitle', e.target.value)} className="mt-1 w-full bg-transparent text-xl font-black tracking-wide outline-none md:text-3xl" />
                 ) : (
                   <h2 className="mt-1 text-xl font-black tracking-wide md:text-3xl">{data.eventTitle}</h2>
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-sm font-semibold text-yellow-100">
-                  <span className="flex items-center gap-2">
-                    <Clock size={16} /> {data.note}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    {connected ? <Wifi size={16} /> : <WifiOff size={16} />}{' '}
-                    {connected ? 'Realtime Online' : hasFirebaseConfig ? 'Đang kết nối' : 'Demo local'}
-                  </span>
+                  <span className="flex items-center gap-2"><Clock size={16} /> {data.note}</span>
+                  <span className="flex items-center gap-2">{connected ? <Wifi size={16} /> : <WifiOff size={16} />} {connected ? 'Realtime Online' : hasFirebaseConfig ? 'Đang kết nối' : 'Demo local'}</span>
                   <span>Cập nhật: {lastUpdated}</span>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={handleAdminToggle}
-                  className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-slate-950 hover:bg-yellow-50"
-                >
+                <button onClick={handleAdminToggle} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-slate-950 hover:bg-yellow-50">
                   {adminMode ? <ShieldCheck size={16} /> : <Eye size={16} />}
                   {adminMode ? 'Thoát Admin' : 'Admin'}
                 </button>
-                <button
-                  onClick={() => setTvMode(!tvMode)}
-                  className="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 font-bold text-white hover:bg-slate-800"
-                >
+                <button onClick={() => setTvMode(!tvMode)} className="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 font-bold text-white hover:bg-slate-800">
                   <Monitor size={16} />
                   {tvMode ? 'Tắt màn hình lớn' : 'Màn hình lớn'}
                 </button>
+                {adminMode && !tvMode && (
+                  <>
+                    <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={importPlayersFromExcel} />
+                    <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-blue-700 hover:bg-yellow-50">
+                      <Upload size={16} />
+                      Import VĐV Excel
+                    </button>
+                  </>
+                )}
+                {adminMode && !tvMode && (
+                  <button onClick={() => setShowPlayerManager(!showPlayerManager)} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-emerald-700 hover:bg-yellow-50">
+                    <UserPlus size={16} />
+                    Quản lý VĐV
+                  </button>
+                )}
                 {adminMode && !tvMode && (
                   <button onClick={addMatch} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-red-700 hover:bg-yellow-50">
                     <Plus size={16} />
@@ -708,24 +912,19 @@ export default function App() {
                 <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
                   <Edit3 size={16} />
                   {adminMode
-                    ? 'BO5: ai thắng 3 set trước sẽ tự kết thúc trận. Có thể nhập nội dung thi đấu, chọn VĐV bằng dropdown, bấm Sang Set Tiếp Theo sau mỗi set.'
+                    ? 'Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp, chọn nội dung thi đấu, chọn VĐV, rồi bấm Sang Set Tiếp Theo sau mỗi set.'
                     : 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {filters.map(f => (
-                    <button
-                      key={f}
-                      onClick={() => setActiveFilter(f)}
-                      className={classNames(
-                        'rounded-xl border px-3 py-2 text-sm font-bold',
-                        activeFilter === f ? 'border-red-600 bg-red-600 text-white' : 'border-slate-300 bg-white text-slate-700'
-                      )}
-                    >
+                    <button key={f} onClick={() => setActiveFilter(f)} className={classNames('rounded-xl border px-3 py-2 text-sm font-bold', activeFilter === f ? 'border-red-600 bg-red-600 text-white' : 'border-slate-300 bg-white text-slate-700')}>
                       {f}
                     </button>
                   ))}
                 </div>
               </div>
+
+              {adminMode && !tvMode && showPlayerManager && <PlayerManagerPanel />}
 
               <div className="grid gap-2 rounded-2xl bg-slate-100 p-3 text-sm font-semibold text-slate-700 lg:grid-cols-2">
                 <button className="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2" onClick={() => copyText(getViewerLink(), 'viewer')}>
@@ -740,9 +939,7 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-          {visibleMatches.map(match => (
-            <MatchCard key={match.id} match={match} />
-          ))}
+          {visibleMatches.map(match => <MatchCard key={match.id} match={match} />)}
         </div>
 
         <div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">

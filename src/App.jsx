@@ -104,7 +104,6 @@ export default function App() {
   const [players, setPlayers] = useState(defaultPlayers);
   const [tvMode, setTvMode] = useState(false);
   const [adminMode, setAdminMode] = useState(getInitialAdminMode);
-  const [activeFilter, setActiveFilter] = useState('Tất cả');
   const [connected, setConnected] = useState(false);
   const [showPlayerManager, setShowPlayerManager] = useState(false);
   const [editingPlayers, setEditingPlayers] = useState([]);
@@ -113,7 +112,6 @@ export default function App() {
   const fileInputRef = useRef(null);
 
   const statusOptions = ['Chuẩn bị', 'Đang thi đấu', 'Kết thúc'];
-  const filters = ['Tất cả', 'Đang thi đấu', 'Chuẩn bị', 'Kết thúc'];
 
   const normalizeMatches = matches => {
     const list = (matches || []).slice(0, MAX_TABLES);
@@ -240,11 +238,7 @@ export default function App() {
     }
   };
 
-  const visibleMatches = useMemo(() => {
-    const fourMatches = normalizeMatches(data.matches);
-    if (activeFilter === 'Tất cả') return fourMatches;
-    return fourMatches.filter(m => m.status === activeFilter).slice(0, MAX_TABLES);
-  }, [data.matches, activeFilter]);
+  const visibleMatches = useMemo(() => normalizeMatches(data.matches), [data.matches]);
 
   const updateField = (field, value) => {
     if (!adminMode) return;
@@ -413,8 +407,9 @@ export default function App() {
       }
 
       const nextSetHistory = [...(m.setHistory || []), { scoreA, scoreB }];
-      const nextSetA = scoreA > scoreB ? Number(m.setA || 0) + 1 : Number(m.setA || 0);
-      const nextSetB = scoreB > scoreA ? Number(m.setB || 0) + 1 : Number(m.setB || 0);
+      const calculatedWins = getSetWins(nextSetHistory);
+      const nextSetA = calculatedWins.setA;
+      const nextSetB = calculatedWins.setB;
       const isFinished = nextSetA >= SETS_TO_WIN || nextSetB >= SETS_TO_WIN;
       const winner = isFinished ? (nextSetA > nextSetB ? m.playerA : m.playerB) : '';
 
@@ -481,6 +476,22 @@ export default function App() {
         second: '2-digit',
       })
     : '--:--:--';
+
+
+  const getSetWins = setHistory => {
+    return (setHistory || []).reduce(
+      (acc, setItem) => {
+        const scoreA = Number(setItem.scoreA || 0);
+        const scoreB = Number(setItem.scoreB || 0);
+
+        if (scoreA > scoreB) acc.setA += 1;
+        if (scoreB > scoreA) acc.setB += 1;
+
+        return acc;
+      },
+      { setA: 0, setB: 0 }
+    );
+  };
 
   const PlayerManagerPanel = () => (
     <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 shadow-inner">
@@ -564,11 +575,11 @@ export default function App() {
     const leaderB = Number(match.scoreB) > Number(match.scoreA);
     const canEdit = adminMode && !tvMode;
     const setHistoryText = (match.setHistory || []).map(s => `${s.scoreA}-${s.scoreB}`).join(' | ');
-    const isFinished =
-      match.status === 'Kết thúc' || Number(match.setA || 0) >= SETS_TO_WIN || Number(match.setB || 0) >= SETS_TO_WIN;
-    const winnerName =
-      match.winner ||
-      (Number(match.setA || 0) >= SETS_TO_WIN ? match.playerA : Number(match.setB || 0) >= SETS_TO_WIN ? match.playerB : '');
+    const calculatedWins = getSetWins(match.setHistory || []);
+    const displaySetA = calculatedWins.setA;
+    const displaySetB = calculatedWins.setB;
+    const isFinished = displaySetA >= SETS_TO_WIN || displaySetB >= SETS_TO_WIN;
+    const winnerName = isFinished ? (displaySetA > displaySetB ? match.playerA : match.playerB) : '';
     const displayContent = String(match.customContent || '').trim() || (match.content === 'Khác' ? '' : match.content || '');
 
     const playerAOptions = [match.playerA, ...players]
@@ -699,7 +710,7 @@ export default function App() {
 
           <div className="flex flex-col items-center justify-center bg-slate-100 px-2 text-slate-500">
             <div className="text-lg font-black sm:text-2xl">VS</div>
-            <div className="mt-2 text-center text-xs font-black text-slate-700">{match.setA}-{match.setB}</div>
+            <div className="mt-2 text-center text-xs font-black text-slate-700">{displaySetA}-{displaySetB}</div>
           </div>
 
           <div className={classNames('p-3 sm:p-5', leaderB && 'bg-blue-50')}>
@@ -747,7 +758,7 @@ export default function App() {
             <div className="mt-2 rounded-xl bg-white px-4 py-3 text-2xl font-black tracking-wider text-red-700 shadow">{setHistoryText}</div>
             {isFinished && winnerName && (
               <div className="mt-3 rounded-2xl bg-emerald-600 px-4 py-3 text-2xl font-black text-white shadow">
-                Thắng trận: {winnerName} ({match.setA}-{match.setB})
+                Thắng trận: {winnerName} ({displaySetA}-{displaySetB})
               </div>
             )}
           </div>
@@ -865,19 +876,8 @@ export default function App() {
                     ? 'Chỉ hiển thị 4 bàn cố định. Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp.'
                     : 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {filters.map(f => (
-                    <button
-                      key={f}
-                      onClick={() => setActiveFilter(f)}
-                      className={classNames(
-                        'rounded-xl border px-3 py-2 text-sm font-bold',
-                        activeFilter === f ? 'border-red-600 bg-red-600 text-white' : 'border-slate-300 bg-white text-slate-700'
-                      )}
-                    >
-                      {f}
-                    </button>
-                  ))}
+                <div className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700">
+                  4 bàn cố định
                 </div>
               </div>
 

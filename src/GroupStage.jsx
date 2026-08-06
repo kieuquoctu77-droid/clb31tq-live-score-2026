@@ -4,6 +4,7 @@ import { Save, X, Edit3, RotateCcw, Trophy } from 'lucide-react';
 
 const DEFAULT_GROUP_ID = 'groupA';
 const SETS_TO_WIN = 3;
+const MAX_GROUP_PLAYERS = 4;
 
 const sampleGroup = {
   title: 'ĐẤU TRƯỜNG 13 PROMAX - CLB TQ 2026',
@@ -58,6 +59,12 @@ const sampleGroup = {
     11: '50',
   },
 };
+
+
+function normalizeGroupPlayers(players) {
+  const list = Array.isArray(players) ? players : [];
+  return list.slice(0, MAX_GROUP_PLAYERS);
+}
 
 function parseScore(value) {
   const text = String(value || '').trim();
@@ -166,7 +173,7 @@ export default function GroupStage({
   const [group, setGroup] = useState(() => ({
     ...sampleGroup,
     groupName: groupName || `Bảng ${groupCode}`,
-    players: initialPlayers.length ? initialPlayers.slice(0, 12) : sampleGroup.players,
+    players: initialPlayers.length ? initialPlayers.slice(0, MAX_GROUP_PLAYERS) : normalizeGroupPlayers(sampleGroup.players),
   }));
   const [editingCell, setEditingCell] = useState(null);
   const [scoreA, setScoreA] = useState(SETS_TO_WIN);
@@ -184,7 +191,7 @@ export default function GroupStage({
           ...sampleGroup,
           ...value,
           groupName: value.groupName || groupName || `Bảng ${groupCode}`,
-          players: value.players || sampleGroup.players,
+          players: normalizeGroupPlayers(value.players || sampleGroup.players),
           results: value.results || {},
           notes: value.notes || {},
         });
@@ -192,7 +199,7 @@ export default function GroupStage({
         set(groupRef, {
           ...sampleGroup,
           groupName: groupName || `Bảng ${groupCode}`,
-          players: initialPlayers.length ? initialPlayers.slice(0, 12) : sampleGroup.players,
+          players: initialPlayers.length ? initialPlayers.slice(0, MAX_GROUP_PLAYERS) : normalizeGroupPlayers(sampleGroup.players),
         });
       }
     });

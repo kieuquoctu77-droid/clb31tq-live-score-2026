@@ -139,6 +139,8 @@ export default function App() {
 
   const statusOptions = ['Chuẩn bị', 'Đang thi đấu', 'Kết thúc'];
   const groupTabs = ['A', 'B', 'C', 'D', 'E', 'F'];
+  const activeGroupIndex = groupTabs.indexOf(activeGroup);
+  const activeGroupPlayers = players.slice(activeGroupIndex * 4, activeGroupIndex * 4 + 4);
 
   const normalizeMatches = matches => {
     const list = (matches || []).slice(0, MAX_TABLES);
@@ -1069,7 +1071,7 @@ export default function App() {
               dbPath={`clb31tq/group-stage/group${activeGroup}`}
               groupCode={activeGroup}
               groupName={`Bảng ${activeGroup}`}
-              initialPlayers={players}
+              initialPlayers={activeGroupPlayers}
             />
           </div>
         )}

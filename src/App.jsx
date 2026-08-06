@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import * as XLSX from 'xlsx';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, onValue, ref, set } from 'firebase/database';
 import {
@@ -16,7 +15,6 @@ import {
   ShieldCheck,
   Copy,
   CheckCircle2,
-  Upload,
 } from 'lucide-react';
 
 const firebaseConfig = {
@@ -50,22 +48,11 @@ const SETS_TO_WIN = 3;
 
 const defaultPlayers = ['Anthony', 'Leo', 'Hico', 'Banlan', 'Minh', 'Hung'];
 
-const matchTypes = [
-  'Vòng bảng',
-  'Tứ kết',
-  'Bán kết',
-  'Chung kết',
-  'Tranh hạng 3',
-  'Giao lưu',
-  'Khác',
-];
-
 const initialMatches = [
   {
     id: 1,
     table: 'Bàn 1',
     content: 'Giao lưu',
-    customContent: '',
     playerA: 'Anthony',
     playerB: 'Leo',
     scoreA: 0,
@@ -80,7 +67,6 @@ const initialMatches = [
     id: 2,
     table: 'Bàn 2',
     content: 'Chung kết',
-    customContent: '',
     playerA: 'Hico',
     playerB: 'Banlan',
     scoreA: 0,
@@ -95,7 +81,6 @@ const initialMatches = [
     id: 3,
     table: 'Bàn 3',
     content: 'Bán kết',
-    customContent: '',
     playerA: 'Minh',
     playerB: 'Hung',
     scoreA: 0,
@@ -110,7 +95,6 @@ const initialMatches = [
     id: 4,
     table: 'Bàn 4',
     content: '',
-    customContent: '',
     playerA: '',
     playerB: '',
     scoreA: 0,
@@ -159,7 +143,6 @@ export default function App() {
   const [connected, setConnected] = useState(false);
   const [copied, setCopied] = useState('');
   const hydrated = useRef(false);
-  const fileInputRef = useRef(null);
 
   const statusOptions = ['Chuẩn bị', 'Đang thi đấu', 'Kết thúc'];
   const filters = ['Tất cả', 'Đang thi đấu', 'Chuẩn bị', 'Kết thúc'];
@@ -171,7 +154,6 @@ export default function App() {
       winner: m.winner || '',
       status: m.status || 'Chuẩn bị',
       content: m.content || '',
-      customContent: m.customContent || '',
       scoreA: Number(m.scoreA || 0),
       scoreB: Number(m.scoreB || 0),
       setA: Number(m.setA || 0),
@@ -182,6 +164,7 @@ export default function App() {
     if (!value) return defaultPlayers;
 
     let list = [];
+
     if (Array.isArray(value)) {
       list = value.map(p => (typeof p === 'string' ? p : p?.name));
     } else {
@@ -289,72 +272,6 @@ export default function App() {
     saveData({ ...data, matches });
   };
 
-  const getPlayerNameFromRow = row => {
-    const preferredKeys = [
-      'Vận Động Viên',
-      'Vận động viên',
-      'VĐV',
-      'VDV',
-      'Họ tên',
-      'Tên',
-      'Name',
-      'name',
-    ];
-
-    for (const key of preferredKeys) {
-      if (row[key]) return String(row[key]).trim();
-    }
-
-    const values = Object.values(row)
-      .map(value => String(value || '').trim())
-      .filter(Boolean);
-
-    return values.find(value => !/^\d+(\.0)?$/.test(value)) || '';
-  };
-
-  const importPlayersFromExcel = async event => {
-    if (!adminMode) return;
-
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'array' });
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-
-      const importedPlayers = rows
-        .map(getPlayerNameFromRow)
-        .map(name => name.trim())
-        .filter(Boolean)
-        .filter((name, index, arr) => arr.indexOf(name) === index);
-
-      if (!importedPlayers.length) {
-        window.alert('Không tìm thấy tên VĐV trong file Excel. Cột nên có tên: Vận Động Viên, VĐV, Họ tên hoặc Tên.');
-        return;
-      }
-
-      const playersPayload = importedPlayers.reduce((acc, name, index) => {
-        const key = `p${String(index + 1).padStart(3, '0')}`;
-        acc[key] = { name };
-        return acc;
-      }, {});
-
-      if (database) {
-        await set(ref(database, PLAYERS_PATH), playersPayload);
-      }
-
-      setPlayers(importedPlayers);
-      window.alert(`Đã import ${importedPlayers.length} VĐV từ Excel.`);
-    } catch (error) {
-      console.error(error);
-      window.alert('Import Excel không thành công. Anh kiểm tra lại file .xlsx, .xls hoặc .csv.');
-    } finally {
-      event.target.value = '';
-    }
-  };
-
   const changePoint = (id, side, delta) => {
     if (!adminMode) return;
     const matches = data.matches.map(m => {
@@ -439,7 +356,6 @@ export default function App() {
         id: nextId,
         table: `Bàn ${((nextId - 1) % 4) + 1}`,
         content: '',
-        customContent: '',
         playerA: players[0] || '',
         playerB: players[1] || '',
         scoreA: 0,
@@ -505,8 +421,6 @@ export default function App() {
     const winnerName =
       match.winner ||
       (Number(match.setA || 0) >= SETS_TO_WIN ? match.playerA : Number(match.setB || 0) >= SETS_TO_WIN ? match.playerB : '');
-    const displayContent =
-      String(match.customContent || '').trim() || (match.content === 'Khác' ? '' : match.content || '');
 
     const playerAOptions = [match.playerA, ...players]
       .filter(Boolean)
@@ -533,13 +447,28 @@ export default function App() {
             </div>
             <div className="min-w-0">
               {canEdit ? (
-                <input
-                  value={match.table}
-                  onChange={e => updateMatch(match.id, 'table', e.target.value)}
-                  className="w-28 bg-transparent text-lg font-black outline-none"
-                />
+                <>
+                  <input
+                    value={match.table}
+                    onChange={e => updateMatch(match.id, 'table', e.target.value)}
+                    className="w-28 bg-transparent text-lg font-black outline-none"
+                  />
+                  <input
+                    value={match.content || ''}
+                    onChange={e => updateMatch(match.id, 'content', e.target.value)}
+                    placeholder="Nhập nội dung thi đấu"
+                    className="mt-1 block w-56 max-w-[55vw] bg-transparent text-sm font-bold text-yellow-300 placeholder:text-slate-400 outline-none"
+                  />
+                </>
               ) : (
-                <div className="text-lg font-black">{match.table}</div>
+                <>
+                  <div className="text-lg font-black">{match.table}</div>
+                  {match.content && (
+                    <div className="mt-1 max-w-[55vw] truncate text-sm font-bold text-yellow-300">
+                      {match.content}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -562,40 +491,6 @@ export default function App() {
             </div>
           )}
         </div>
-
-        {canEdit ? (
-          <div className="border-b bg-yellow-50 p-3">
-            <div className="grid gap-2 sm:grid-cols-[180px_1fr]">
-              <select
-                value={match.content || ''}
-                onChange={e => updateMatch(match.id, 'content', e.target.value)}
-                className="w-full rounded-xl border border-yellow-300 bg-white px-3 py-3 text-base font-black text-slate-900 outline-none focus:border-red-500"
-              >
-                <option value="">Chọn nội dung thi đấu</option>
-                {matchTypes.map(item => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-
-              <input
-                value={match.customContent || ''}
-                onChange={e => updateMatch(match.id, 'customContent', e.target.value)}
-                placeholder="Nội dung khác nếu cần"
-                className="w-full rounded-xl border border-yellow-300 bg-white px-3 py-3 text-base font-bold text-slate-900 outline-none focus:border-red-500"
-              />
-            </div>
-          </div>
-        ) : (
-          displayContent && (
-            <div className="border-b bg-yellow-50 px-4 py-3 text-center">
-              <div className="text-xl font-black uppercase tracking-wide text-red-700">
-                {displayContent}
-              </div>
-            </div>
-          )
-        )}
 
         <div className="grid grid-cols-[1fr_46px_1fr] bg-white sm:grid-cols-[1fr_64px_1fr]">
           <div className={classNames('p-3 sm:p-5', leaderA && 'bg-red-50')}>
@@ -798,24 +693,6 @@ export default function App() {
                   {tvMode ? 'Tắt màn hình lớn' : 'Màn hình lớn'}
                 </button>
                 {adminMode && !tvMode && (
-                  <>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".xlsx,.xls,.csv"
-                      className="hidden"
-                      onChange={importPlayersFromExcel}
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-blue-700 hover:bg-yellow-50"
-                    >
-                      <Upload size={16} />
-                      Import VĐV Excel
-                    </button>
-                  </>
-                )}
-                {adminMode && !tvMode && (
                   <button onClick={addMatch} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-red-700 hover:bg-yellow-50">
                     <Plus size={16} />
                     Thêm trận
@@ -831,7 +708,7 @@ export default function App() {
                 <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
                   <Edit3 size={16} />
                   {adminMode
-                    ? 'Có thể Import VĐV từ Excel, chọn nhanh nội dung thi đấu bằng dropdown, chọn VĐV bằng dropdown, bấm Sang Set Tiếp Theo sau mỗi set.'
+                    ? 'BO5: ai thắng 3 set trước sẽ tự kết thúc trận. Có thể nhập nội dung thi đấu, chọn VĐV bằng dropdown, bấm Sang Set Tiếp Theo sau mỗi set.'
                     : 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'}
                 </div>
                 <div className="flex flex-wrap gap-2">

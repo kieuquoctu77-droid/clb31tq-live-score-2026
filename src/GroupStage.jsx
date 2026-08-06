@@ -1,65 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { onValue, ref, set } from 'firebase/database';
-import { Save, X, Edit3, RotateCcw, Trophy } from 'lucide-react';
+import { Save, X, RotateCcw } from 'lucide-react';
 
 const DEFAULT_GROUP_ID = 'groupA';
 const SETS_TO_WIN = 3;
 const MAX_GROUP_PLAYERS = 4;
 
 const sampleGroup = {
-  title: 'ĐẤU TRƯỜNG 13 PROMAX - CLB TQ 2026',
   groupName: 'Bảng A',
-  players: [
-    'ĐÌNH - NHÂN',
-    'THANH - KỲ',
-    'TRUNG (H) - NHƠ',
-    'LINH - HÂN',
-    'TRUNG (MS) - SANG',
-    'BẢO - TÀI',
-    'TRUNG (MS) - T LONG',
-    'TRUNG (MS) - THU',
-    'TỰ - VI',
-    'HIỆP - CHÂU',
-    'HIỆP - HUY',
-    'TRUNG (H) - KIỆT',
-  ],
-  results: {
-    '0-2': '2-3',
-    '0-9': '3-2',
-    '1-4': '2-3',
-    '1-5': '3-0',
-    '2-0': '3-2',
-    '2-4': '3-2',
-    '3-4': '1-3',
-    '3-7': '1-3',
-    '3-8': '1-3',
-    '3-9': '3-2',
-    '4-1': '3-2',
-    '4-2': '2-3',
-    '4-3': '3-1',
-    '5-1': '0-3',
-    '5-11': '3-0',
-    '7-3': '3-1',
-    '7-8': '3-1',
-    '8-3': '3-1',
-    '8-7': '1-3',
-    '8-9': '3-1',
-    '9-0': '2-3',
-    '9-3': '2-3',
-    '9-8': '1-3',
-  },
-  notes: {
-    0: '70',
-    1: '60',
-    3: '120',
-    4: '50',
-    5: '60',
-    8: '40',
-    9: '180',
-    11: '50',
-  },
+  players: ['ĐÌNH - NHÂN', 'THANH - KỲ', 'TRUNG (H) - NHƠ', 'LINH - HÂN'],
+  results: {},
 };
-
 
 function normalizeGroupPlayers(players) {
   const list = Array.isArray(players) ? players : [];
@@ -173,7 +124,9 @@ export default function GroupStage({
   const [group, setGroup] = useState(() => ({
     ...sampleGroup,
     groupName: groupName || `Bảng ${groupCode}`,
-    players: initialPlayers.length ? initialPlayers.slice(0, MAX_GROUP_PLAYERS) : normalizeGroupPlayers(sampleGroup.players),
+    players: initialPlayers.length
+      ? initialPlayers.slice(0, MAX_GROUP_PLAYERS)
+      : normalizeGroupPlayers(sampleGroup.players),
   }));
   const [editingCell, setEditingCell] = useState(null);
   const [scoreA, setScoreA] = useState(SETS_TO_WIN);
@@ -193,13 +146,14 @@ export default function GroupStage({
           groupName: value.groupName || groupName || `Bảng ${groupCode}`,
           players: normalizeGroupPlayers(value.players || sampleGroup.players),
           results: value.results || {},
-          notes: value.notes || {},
         });
       } else {
         set(groupRef, {
           ...sampleGroup,
           groupName: groupName || `Bảng ${groupCode}`,
-          players: initialPlayers.length ? initialPlayers.slice(0, MAX_GROUP_PLAYERS) : normalizeGroupPlayers(sampleGroup.players),
+          players: initialPlayers.length
+            ? initialPlayers.slice(0, MAX_GROUP_PLAYERS)
+            : normalizeGroupPlayers(sampleGroup.players),
         });
       }
     });
@@ -275,7 +229,7 @@ export default function GroupStage({
 
     await saveGroup({
       ...group,
-      players: nextPlayers,
+      players: normalizeGroupPlayers(nextPlayers),
     });
   };
 
@@ -290,13 +244,11 @@ export default function GroupStage({
   };
 
   return (
-    <div className="rounded-3xl bg-white shadow-2xl overflow-hidden">
+    <div className="overflow-hidden rounded-3xl bg-white shadow-2xl">
       <div className="bg-blue-900 px-4 py-3 text-center text-white">
-        <div className="flex items-center justify-center gap-2 text-xl font-black uppercase">
-          <Trophy size={20} />
-          {group.title || 'Vòng bảng'}
+        <div className="text-center text-2xl font-black text-white">
+          {group.groupName || DEFAULT_GROUP_ID}
         </div>
-        <div className="mt-1 text-sm font-bold text-blue-100">{group.groupName || DEFAULT_GROUP_ID}</div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-slate-50 p-3">
@@ -316,30 +268,40 @@ export default function GroupStage({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-[1100px] w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <th className="border border-slate-900 bg-blue-900 px-2 py-3 text-white">STT</th>
-              <th className="border border-slate-900 bg-blue-900 px-3 py-3 text-white min-w-[180px]">TÊN ĐỘI</th>
+              <th className="w-[48px] border border-slate-900 bg-blue-900 px-1 py-2 text-white">
+                STT
+              </th>
+              <th className="w-[160px] border border-slate-900 bg-blue-900 px-2 py-2 text-white">
+                VĐV
+              </th>
               {(group.players || []).map((player, index) => (
-                <th key={index} className="border border-slate-900 bg-blue-900 px-2 py-3 text-white min-w-[96px]">
-                  <div className="line-clamp-2 text-xs font-black uppercase">{player}</div>
+                <th
+                  key={index}
+                  className="w-[80px] border border-slate-900 bg-blue-900 px-1 py-2 text-white"
+                >
+                  <div className="text-[11px] font-black uppercase leading-4">
+                    {player}
+                  </div>
                 </th>
               ))}
-              <th className="border border-slate-900 bg-blue-900 px-3 py-3 text-white min-w-[90px]">TIỀN CÔNG ÍCH</th>
             </tr>
           </thead>
 
           <tbody>
             {(group.players || []).map((player, row) => (
               <tr key={row}>
-                <td className="border border-slate-900 bg-slate-200 px-2 py-2 text-center font-black">{row + 1}</td>
-                <td className="border border-slate-900 bg-slate-300 px-3 py-2 font-black">
+                <td className="border border-slate-900 bg-slate-200 px-1 py-2 text-center font-black">
+                  {row + 1}
+                </td>
+                <td className="border border-slate-900 bg-slate-300 px-2 py-2 font-black">
                   {adminMode ? (
                     <input
                       value={player}
                       onChange={event => updatePlayer(row, event.target.value)}
-                      className="w-full rounded border border-slate-300 px-2 py-1 font-black"
+                      className="w-full rounded border border-slate-300 px-2 py-1 text-sm font-black"
                     />
                   ) : (
                     player
@@ -362,10 +324,6 @@ export default function GroupStage({
                     </td>
                   );
                 })}
-
-                <td className="border border-slate-900 bg-orange-50 px-3 py-2 text-right font-black">
-                  {group.notes?.[row] || '-'}
-                </td>
               </tr>
             ))}
           </tbody>
@@ -379,7 +337,7 @@ export default function GroupStage({
             <thead>
               <tr>
                 <th className="border bg-slate-800 px-3 py-2 text-white">Hạng</th>
-                <th className="border bg-slate-800 px-3 py-2 text-left text-white">Đội / VĐV</th>
+                <th className="border bg-slate-800 px-3 py-2 text-left text-white">VĐV</th>
                 <th className="border bg-slate-800 px-3 py-2 text-white">Trận</th>
                 <th className="border bg-slate-800 px-3 py-2 text-white">Thắng</th>
                 <th className="border bg-slate-800 px-3 py-2 text-white">Thua</th>
@@ -398,7 +356,9 @@ export default function GroupStage({
                   <td className="border px-3 py-2 text-center text-red-700">{item.losses}</td>
                   <td className="border px-3 py-2 text-center">{item.setFor}</td>
                   <td className="border px-3 py-2 text-center">{item.setAgainst}</td>
-                  <td className="border px-3 py-2 text-center font-black">{item.setDiff > 0 ? `+${item.setDiff}` : item.setDiff}</td>
+                  <td className="border px-3 py-2 text-center font-black">
+                    {item.setDiff > 0 ? `+${item.setDiff}` : item.setDiff}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -14,7 +14,6 @@ import {
   WifiOff,
   Eye,
   ShieldCheck,
-  Copy,
   CheckCircle2,
   Upload,
   Trash2,
@@ -51,6 +50,7 @@ const DB_PATH = 'clb31tq/live-score/current';
 const PLAYERS_PATH = 'clb31tq/players';
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '31TQ2026';
 const SETS_TO_WIN = 3;
+const MAX_TABLES = 4;
 
 const defaultPlayers = ['Anthony', 'Leo', 'Hico', 'Banlan', 'Minh', 'Hung'];
 
@@ -64,68 +64,23 @@ const matchTypes = [
   'Khác',
 ];
 
-const initialMatches = [
-  {
-    id: 1,
-    table: 'Bàn 1',
-    content: 'Giao lưu',
-    customContent: '',
-    playerA: 'Anthony',
-    playerB: 'Leo',
-    scoreA: 0,
-    scoreB: 0,
-    setA: 0,
-    setB: 0,
-    setHistory: [],
-    winner: '',
-    status: 'Đang thi đấu',
-  },
-  {
-    id: 2,
-    table: 'Bàn 2',
-    content: 'Chung kết',
-    customContent: '',
-    playerA: 'Hico',
-    playerB: 'Banlan',
-    scoreA: 0,
-    scoreB: 0,
-    setA: 0,
-    setB: 0,
-    setHistory: [],
-    winner: '',
-    status: 'Chuẩn bị',
-  },
-  {
-    id: 3,
-    table: 'Bàn 3',
-    content: 'Bán kết',
-    customContent: '',
-    playerA: 'Minh',
-    playerB: 'Hung',
-    scoreA: 0,
-    scoreB: 0,
-    setA: 0,
-    setB: 0,
-    setHistory: [],
-    winner: '',
-    status: 'Chuẩn bị',
-  },
-  {
-    id: 4,
-    table: 'Bàn 4',
-    content: '',
-    customContent: '',
-    playerA: '',
-    playerB: '',
-    scoreA: 0,
-    scoreB: 0,
-    setA: 0,
-    setB: 0,
-    setHistory: [],
-    winner: '',
-    status: 'Chuẩn bị',
-  },
-];
+const createEmptyMatch = id => ({
+  id,
+  table: `Bàn ${id}`,
+  content: '',
+  customContent: '',
+  playerA: '',
+  playerB: '',
+  scoreA: 0,
+  scoreB: 0,
+  setA: 0,
+  setB: 0,
+  setHistory: [],
+  winner: '',
+  status: id === 1 ? 'Đang thi đấu' : 'Chuẩn bị',
+});
+
+const initialMatches = [1, 2, 3, 4].map(createEmptyMatch);
 
 const defaultData = {
   clubTitle: 'CLB BB 31 TÂN QUÝ',
@@ -140,16 +95,6 @@ function getInitialAdminMode() {
   return sessionStorage.getItem('clb31tq-admin-auth') === '1';
 }
 
-function getViewerLink() {
-  if (typeof window === 'undefined') return '';
-  return `${window.location.origin}${window.location.pathname}`;
-}
-
-function getAdminLink() {
-  if (typeof window === 'undefined') return '';
-  return `${window.location.origin}${window.location.pathname}`;
-}
-
 function classNames(...items) {
   return items.filter(Boolean).join(' ');
 }
@@ -161,7 +106,6 @@ export default function App() {
   const [adminMode, setAdminMode] = useState(getInitialAdminMode);
   const [activeFilter, setActiveFilter] = useState('Tất cả');
   const [connected, setConnected] = useState(false);
-  const [copied, setCopied] = useState('');
   const [showPlayerManager, setShowPlayerManager] = useState(false);
   const [editingPlayers, setEditingPlayers] = useState([]);
   const [newPlayerName, setNewPlayerName] = useState('');
@@ -171,9 +115,19 @@ export default function App() {
   const statusOptions = ['Chuẩn bị', 'Đang thi đấu', 'Kết thúc'];
   const filters = ['Tất cả', 'Đang thi đấu', 'Chuẩn bị', 'Kết thúc'];
 
-  const normalizeMatches = matches =>
-    (matches || initialMatches).map(m => ({
+  const normalizeMatches = matches => {
+    const list = (matches || []).slice(0, MAX_TABLES);
+    const filled = [...list];
+
+    while (filled.length < MAX_TABLES) {
+      filled.push(createEmptyMatch(filled.length + 1));
+    }
+
+    return filled.map((m, index) => ({
+      ...createEmptyMatch(index + 1),
       ...m,
+      id: index + 1,
+      table: m.table || `Bàn ${index + 1}`,
       setHistory: m.setHistory || [],
       winner: m.winner || '',
       status: m.status || 'Chuẩn bị',
@@ -184,6 +138,7 @@ export default function App() {
       setA: Number(m.setA || 0),
       setB: Number(m.setB || 0),
     }));
+  };
 
   const normalizePlayers = value => {
     if (!value) return defaultPlayers;
@@ -270,7 +225,12 @@ export default function App() {
   }, [showPlayerManager, players]);
 
   const saveData = async nextData => {
-    const payload = { ...nextData, updatedAt: Date.now() };
+    const payload = {
+      ...nextData,
+      matches: normalizeMatches(nextData.matches),
+      updatedAt: Date.now(),
+    };
+
     setData(payload);
 
     if (database) {
@@ -281,8 +241,9 @@ export default function App() {
   };
 
   const visibleMatches = useMemo(() => {
-    if (activeFilter === 'Tất cả') return data.matches || [];
-    return (data.matches || []).filter(m => m.status === activeFilter);
+    const fourMatches = normalizeMatches(data.matches);
+    if (activeFilter === 'Tất cả') return fourMatches;
+    return fourMatches.filter(m => m.status === activeFilter).slice(0, MAX_TABLES);
   }, [data.matches, activeFilter]);
 
   const updateField = (field, value) => {
@@ -292,7 +253,7 @@ export default function App() {
 
   const updateMatch = (id, field, value) => {
     if (!adminMode) return;
-    const matches = data.matches.map(m => (m.id === id ? { ...m, [field]: value } : m));
+    const matches = normalizeMatches(data.matches).map(m => (m.id === id ? { ...m, [field]: value } : m));
     saveData({ ...data, matches });
   };
 
@@ -404,7 +365,7 @@ export default function App() {
       }
     });
 
-    const updatedMatches = (data.matches || []).map(match => ({
+    const updatedMatches = normalizeMatches(data.matches).map(match => ({
       ...match,
       playerA: renameMap[match.playerA] || match.playerA,
       playerB: renameMap[match.playerB] || match.playerB,
@@ -419,7 +380,7 @@ export default function App() {
 
   const changePoint = (id, side, delta) => {
     if (!adminMode) return;
-    const matches = data.matches.map(m => {
+    const matches = normalizeMatches(data.matches).map(m => {
       if (m.id !== id) return m;
       if (m.status === 'Kết thúc') return m;
       const field = side === 'A' ? 'scoreA' : 'scoreB';
@@ -431,7 +392,7 @@ export default function App() {
   const finishSet = id => {
     if (!adminMode) return;
 
-    const matches = data.matches.map(m => {
+    const matches = normalizeMatches(data.matches).map(m => {
       if (m.id !== id) return m;
       if (m.status === 'Kết thúc') {
         window.alert('Trận này đã kết thúc. Bấm Reset nếu muốn bắt đầu lại.');
@@ -474,7 +435,7 @@ export default function App() {
 
   const resetScore = id => {
     if (!adminMode) return;
-    const matches = data.matches.map(m =>
+    const matches = normalizeMatches(data.matches).map(m =>
       m.id === id
         ? {
             ...m,
@@ -489,42 +450,6 @@ export default function App() {
         : m
     );
     saveData({ ...data, matches });
-  };
-
-  const addMatch = () => {
-    if (!adminMode) return;
-    const current = data.matches || [];
-    const nextId = current.length ? Math.max(...current.map(m => Number(m.id))) + 1 : 1;
-    const matches = [
-      ...current,
-      {
-        id: nextId,
-        table: `Bàn ${((nextId - 1) % 4) + 1}`,
-        content: '',
-        customContent: '',
-        playerA: players[0] || '',
-        playerB: players[1] || '',
-        scoreA: 0,
-        scoreB: 0,
-        setA: 0,
-        setB: 0,
-        setHistory: [],
-        winner: '',
-        status: 'Chuẩn bị',
-      },
-    ];
-    saveData({ ...data, matches });
-  };
-
-  const copyText = async (text, type) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(type);
-      setTimeout(() => setCopied(''), 1500);
-    } catch {
-      setCopied('Lỗi copy');
-      setTimeout(() => setCopied(''), 1500);
-    }
   };
 
   const handleAdminToggle = () => {
@@ -856,50 +781,75 @@ export default function App() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0 flex-1">
                 {adminMode && !tvMode ? (
-                  <input value={data.clubTitle} onChange={e => updateField('clubTitle', e.target.value)} className="w-full bg-transparent text-2xl font-black tracking-wide outline-none md:text-4xl" />
+                  <input
+                    value={data.clubTitle}
+                    onChange={e => updateField('clubTitle', e.target.value)}
+                    className="w-full bg-transparent text-2xl font-black tracking-wide outline-none md:text-4xl"
+                  />
                 ) : (
                   <h1 className="text-2xl font-black tracking-wide md:text-4xl">{data.clubTitle}</h1>
                 )}
                 {adminMode && !tvMode ? (
-                  <input value={data.eventTitle} onChange={e => updateField('eventTitle', e.target.value)} className="mt-1 w-full bg-transparent text-xl font-black tracking-wide outline-none md:text-3xl" />
+                  <input
+                    value={data.eventTitle}
+                    onChange={e => updateField('eventTitle', e.target.value)}
+                    className="mt-1 w-full bg-transparent text-xl font-black tracking-wide outline-none md:text-3xl"
+                  />
                 ) : (
                   <h2 className="mt-1 text-xl font-black tracking-wide md:text-3xl">{data.eventTitle}</h2>
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-sm font-semibold text-yellow-100">
-                  <span className="flex items-center gap-2"><Clock size={16} /> {data.note}</span>
-                  <span className="flex items-center gap-2">{connected ? <Wifi size={16} /> : <WifiOff size={16} />} {connected ? 'Realtime Online' : hasFirebaseConfig ? 'Đang kết nối' : 'Demo local'}</span>
+                  <span className="flex items-center gap-2">
+                    <Clock size={16} /> {data.note}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {connected ? <Wifi size={16} /> : <WifiOff size={16} />}{' '}
+                    {connected ? 'Realtime Online' : hasFirebaseConfig ? 'Đang kết nối' : 'Demo local'}
+                  </span>
                   <span>Cập nhật: {lastUpdated}</span>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <button onClick={handleAdminToggle} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-slate-950 hover:bg-yellow-50">
+                <button
+                  onClick={handleAdminToggle}
+                  className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-slate-950 hover:bg-yellow-50"
+                >
                   {adminMode ? <ShieldCheck size={16} /> : <Eye size={16} />}
                   {adminMode ? 'Thoát Admin' : 'Admin'}
                 </button>
-                <button onClick={() => setTvMode(!tvMode)} className="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 font-bold text-white hover:bg-slate-800">
+                <button
+                  onClick={() => setTvMode(!tvMode)}
+                  className="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 font-bold text-white hover:bg-slate-800"
+                >
                   <Monitor size={16} />
                   {tvMode ? 'Tắt màn hình lớn' : 'Màn hình lớn'}
                 </button>
                 {adminMode && !tvMode && (
                   <>
-                    <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={importPlayersFromExcel} />
-                    <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-blue-700 hover:bg-yellow-50">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      className="hidden"
+                      onChange={importPlayersFromExcel}
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-blue-700 hover:bg-yellow-50"
+                    >
                       <Upload size={16} />
                       Import VĐV Excel
                     </button>
                   </>
                 )}
                 {adminMode && !tvMode && (
-                  <button onClick={() => setShowPlayerManager(!showPlayerManager)} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-emerald-700 hover:bg-yellow-50">
+                  <button
+                    onClick={() => setShowPlayerManager(!showPlayerManager)}
+                    className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-emerald-700 hover:bg-yellow-50"
+                  >
                     <UserPlus size={16} />
                     Quản lý VĐV
-                  </button>
-                )}
-                {adminMode && !tvMode && (
-                  <button onClick={addMatch} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-red-700 hover:bg-yellow-50">
-                    <Plus size={16} />
-                    Thêm trận
                   </button>
                 )}
               </div>
@@ -912,12 +862,19 @@ export default function App() {
                 <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
                   <Edit3 size={16} />
                   {adminMode
-                    ? 'Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp, chọn nội dung thi đấu, chọn VĐV, rồi bấm Sang Set Tiếp Theo sau mỗi set.'
+                    ? 'Chỉ hiển thị 4 bàn cố định. Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp.'
                     : 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {filters.map(f => (
-                    <button key={f} onClick={() => setActiveFilter(f)} className={classNames('rounded-xl border px-3 py-2 text-sm font-bold', activeFilter === f ? 'border-red-600 bg-red-600 text-white' : 'border-slate-300 bg-white text-slate-700')}>
+                    <button
+                      key={f}
+                      onClick={() => setActiveFilter(f)}
+                      className={classNames(
+                        'rounded-xl border px-3 py-2 text-sm font-bold',
+                        activeFilter === f ? 'border-red-600 bg-red-600 text-white' : 'border-slate-300 bg-white text-slate-700'
+                      )}
+                    >
                       {f}
                     </button>
                   ))}
@@ -925,26 +882,19 @@ export default function App() {
               </div>
 
               {adminMode && !tvMode && showPlayerManager && <PlayerManagerPanel />}
-
-              <div className="grid gap-2 rounded-2xl bg-slate-100 p-3 text-sm font-semibold text-slate-700 lg:grid-cols-2">
-                <button className="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2" onClick={() => copyText(getViewerLink(), 'viewer')}>
-                  <Copy size={15} /> Copy link ACE xem {copied === 'viewer' && '✓'}
-                </button>
-                <button className="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2" onClick={() => copyText(getAdminLink(), 'admin')}>
-                  <Copy size={15} /> Copy link Admin {copied === 'admin' && '✓'}
-                </button>
-              </div>
             </div>
           )}
         </div>
 
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-          {visibleMatches.map(match => <MatchCard key={match.id} match={match} />)}
+          {visibleMatches.map(match => (
+            <MatchCard key={match.id} match={match} />
+          ))}
         </div>
 
         <div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
           <div className="flex items-center justify-center gap-2">
-            <Table2 size={16} /> Link ACE xem dùng link thường. Muốn nhập điểm, bấm Admin và nhập mật khẩu. Danh sách VĐV lấy từ Firebase path clb31tq/players.
+            <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định. Muốn nhập điểm, bấm Admin và nhập mật khẩu.
           </div>
         </div>
       </div>

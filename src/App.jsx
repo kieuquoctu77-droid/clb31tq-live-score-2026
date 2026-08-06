@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, onValue, ref, set } from 'firebase/database';
+import GroupStage from './GroupStage';
 import {
   Plus,
   Minus,
@@ -123,6 +124,8 @@ export default function App() {
   const [data, setData] = useState(defaultData);
   const [players, setPlayers] = useState(defaultPlayers);
   const [tvMode, setTvMode] = useState(false);
+  const [activePage, setActivePage] = useState('live');
+  const [activeGroup, setActiveGroup] = useState('A');
   const [adminMode, setAdminMode] = useState(getInitialAdminMode);
   const [connected, setConnected] = useState(false);
   const [showPlayerManager, setShowPlayerManager] = useState(false);
@@ -135,6 +138,7 @@ export default function App() {
   const fileInputRef = useRef(null);
 
   const statusOptions = ['Chuẩn bị', 'Đang thi đấu', 'Kết thúc'];
+  const groupTabs = ['A', 'B', 'C', 'D', 'E', 'F'];
 
   const normalizeMatches = matches => {
     const list = (matches || []).slice(0, MAX_TABLES);
@@ -984,16 +988,49 @@ export default function App() {
 
           {!tvMode && (
             <div className="space-y-3 p-4">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setActivePage('live')}
+                  className={classNames(
+                    'rounded-xl px-4 py-2 font-bold',
+                    activePage === 'live'
+                      ? 'bg-red-600 text-white'
+                      : 'border border-slate-300 bg-white text-slate-700'
+                  )}
+                >
+                  Live Score
+                </button>
+
+                <button
+                  onClick={() => setActivePage('group')}
+                  className={classNames(
+                    'rounded-xl px-4 py-2 font-bold',
+                    activePage === 'group'
+                      ? 'bg-blue-700 text-white'
+                      : 'border border-slate-300 bg-white text-slate-700'
+                  )}
+                >
+                  Vòng bảng
+                </button>
+              </div>
+
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
                   <Edit3 size={16} />
                   {adminMode
-                    ? 'Chỉ hiển thị 4 bàn cố định. Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp.'
-                    : 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'}
+                    ? activePage === 'live'
+                      ? 'Chỉ hiển thị 4 bàn cố định. Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp.'
+                      : 'Vòng bảng có thể nhập kết quả theo từng ô đối đầu và tự tính xếp hạng.'
+                    : activePage === 'live'
+                    ? 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'
+                    : 'Đây là trang xem vòng bảng. Kết quả sẽ tự cập nhật realtime.'}
                 </div>
-                <div className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700">
-                  4 bàn cố định
-                </div>
+
+                {activePage === 'live' && (
+                  <div className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700">
+                    4 bàn cố định
+                  </div>
+                )}
               </div>
 
               {adminMode && !tvMode && showPlayerManager && <PlayerManagerPanel />}
@@ -1001,15 +1038,45 @@ export default function App() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-          {visibleMatches.map(match => (
-            <MatchCard key={match.id} match={match} />
-          ))}
-        </div>
+        {activePage === 'live' ? (
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+            {visibleMatches.map(match => (
+              <MatchCard key={match.id} match={match} />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {groupTabs.map(group => (
+                <button
+                  key={group}
+                  onClick={() => setActiveGroup(group)}
+                  className={classNames(
+                    'rounded-xl px-4 py-2 font-bold',
+                    activeGroup === group
+                      ? 'bg-blue-700 text-white'
+                      : 'border border-slate-300 bg-white text-slate-700'
+                  )}
+                >
+                  Bảng {group}
+                </button>
+              ))}
+            </div>
+
+            <GroupStage
+              database={database}
+              adminMode={adminMode}
+              dbPath={`clb31tq/group-stage/group${activeGroup}`}
+              groupCode={activeGroup}
+              groupName={`Bảng ${activeGroup}`}
+              initialPlayers={players}
+            />
+          </div>
+        )}
 
         <div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
           <div className="flex items-center justify-center gap-2">
-            <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định. Muốn nhập điểm, bấm Admin và nhập mật khẩu.
+            <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định và có thêm trang vòng bảng.
           </div>
         </div>
       </div>

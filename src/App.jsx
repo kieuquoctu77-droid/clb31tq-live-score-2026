@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, onValue, ref, set } from 'firebase/database';
 import GroupStage from './GroupStage';
+import Knockout from './Knockout';
 import {
   Plus,
   Minus,
@@ -775,22 +776,16 @@ export default function App() {
               </select>
 
               <input
-  defaultValue={match.customContent || ''}
-  onBlur={e =>
-    updateMatch(match.id, 'customContent', e.target.value)
-  }
-  onKeyDown={e => {
-    if (e.key === 'Enter') {
-      updateMatch(
-        match.id,
-        'customContent',
-        e.currentTarget.value
-      );
-    }
-  }}
-  placeholder="Nội dung khác nếu cần"
-  className="w-full rounded-xl border border-yellow-300 bg-white px-3 py-3 text-base font-bold text-slate-900 outline-none focus:border-red-500"
-/>
+                defaultValue={match.customContent || ''}
+                onBlur={e => updateMatch(match.id, 'customContent', e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  }
+                }}
+                placeholder="Nội dung khác nếu cần"
+                className="w-full rounded-xl border border-yellow-300 bg-white px-3 py-3 text-base font-bold text-slate-900 outline-none focus:border-red-500"
+              />
             </div>
           </div>
         ) : (
@@ -1025,6 +1020,18 @@ export default function App() {
                 >
                   Vòng bảng
                 </button>
+
+                <button
+                  onClick={() => setActivePage('knockout')}
+                  className={classNames(
+                    'rounded-xl px-4 py-2 font-bold',
+                    activePage === 'knockout'
+                      ? 'bg-emerald-700 text-white'
+                      : 'border border-slate-300 bg-white text-slate-700'
+                  )}
+                >
+                  Knock-out
+                </button>
               </div>
 
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1033,10 +1040,14 @@ export default function App() {
                   {adminMode
                     ? activePage === 'live'
                       ? 'Chỉ hiển thị 4 bàn cố định. Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp.'
-                      : 'Vòng bảng có thể nhập kết quả theo từng ô đối đầu và tự tính xếp hạng.'
+                      : activePage === 'group'
+                      ? 'Vòng bảng có thể nhập kết quả theo từng ô đối đầu và tự tính xếp hạng.'
+                      : 'Knock-out có thể chọn người thắng để tự chuyển lên vòng tiếp theo.'
                     : activePage === 'live'
                     ? 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'
-                    : 'Đây là trang xem vòng bảng. Kết quả sẽ tự cập nhật realtime.'}
+                    : activePage === 'group'
+                    ? 'Đây là trang xem vòng bảng. Kết quả sẽ tự cập nhật realtime.'
+                    : 'Đây là trang xem sơ đồ Knock-out. Kết quả sẽ tự cập nhật realtime.'}
                 </div>
 
                 {activePage === 'live' && (
@@ -1057,7 +1068,7 @@ export default function App() {
               <MatchCard key={match.id} match={match} />
             ))}
           </div>
-        ) : (
+        ) : activePage === 'group' ? (
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
               {groupTabs.map(group => (
@@ -1085,11 +1096,17 @@ export default function App() {
               initialPlayers={activeGroupPlayers}
             />
           </div>
+        ) : (
+          <Knockout
+            database={database}
+            adminMode={adminMode}
+            dbPath="clb31tq/knockout/serieA16"
+          />
         )}
 
         <div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
           <div className="flex items-center justify-center gap-2">
-            <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định và có thêm trang vòng bảng.
+            <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định và có thêm trang vòng bảng, Knock-out.
           </div>
         </div>
       </div>

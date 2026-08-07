@@ -199,7 +199,11 @@ export default function Knockout({
     const next = prepareKnockoutData(cloneData(data));
     next[roundKey][matchId][playerKey] = value;
 
-    if (next[roundKey][matchId].winner && next[roundKey][matchId].winner !== next[roundKey][matchId].p1 && next[roundKey][matchId].winner !== next[roundKey][matchId].p2) {
+    if (
+      next[roundKey][matchId].winner &&
+      next[roundKey][matchId].winner !== next[roundKey][matchId].p1 &&
+      next[roundKey][matchId].winner !== next[roundKey][matchId].p2
+    ) {
       next[roundKey][matchId].winner = '';
     }
 
@@ -215,15 +219,31 @@ export default function Knockout({
     saveData(defaultKnockoutData);
   };
 
+  const round16Entries = Object.entries(data.round16);
+  const quarterEntries = Object.entries(data.quarter);
+  const semiEntries = Object.entries(data.semi);
+
+  const round16Pairs = [
+    round16Entries.slice(0, 2),
+    round16Entries.slice(2, 4),
+    round16Entries.slice(4, 6),
+    round16Entries.slice(6, 8),
+  ];
+
+  const quarterPairs = [
+    quarterEntries.slice(0, 2),
+    quarterEntries.slice(2, 4),
+  ];
+
   return (
     <div className="rounded-3xl bg-white p-4 shadow-2xl sm:p-6">
       <div className="mb-5 flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="text-2xl font-black text-red-700 sm:text-3xl">
-            SƠ ĐỒ VÒNG 1/8 SERIE A - 16 VĐV
+            🏓 SƠ ĐỒ KNOCK-OUT SERIE A - 16 VĐV
           </div>
           <div className="mt-1 text-sm font-bold text-slate-500">
-            Chọn người thắng, hệ thống tự chuyển lên Tứ kết, Bán kết và Chung kết.
+            Bấm “Thắng” để tự động đẩy VĐV lên nhánh tiếp theo.
           </div>
           <div className="mt-1 text-xs font-bold text-slate-400">
             Trạng thái: {connected ? 'Realtime Firebase' : 'Local'}
@@ -241,58 +261,68 @@ export default function Knockout({
         )}
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="grid min-w-[1200px] grid-cols-[360px_220px_220px_260px] gap-8">
+      <div className="overflow-x-auto rounded-3xl bg-slate-50 p-4">
+        <div className="grid min-w-[1400px] grid-cols-[380px_270px_270px_330px] gap-10">
           <RoundColumn title="VÒNG 1/8" color="text-red-700">
-            <div className="space-y-3">
-              {Object.entries(data.round16).map(([id, match]) => (
-                <MatchBox
-                  key={id}
-                  roundKey="round16"
-                  matchId={id}
-                  match={match}
-                  adminMode={adminMode}
-                  onWinner={chooseWinner}
-                  onUpdatePlayer={updatePlayer}
-                />
+            <div className="space-y-8">
+              {round16Pairs.map((pair, pairIndex) => (
+                <BracketPair key={pairIndex}>
+                  {pair.map(([id, match]) => (
+                    <MatchBox
+                      key={id}
+                      roundKey="round16"
+                      matchId={id}
+                      match={match}
+                      adminMode={adminMode}
+                      onWinner={chooseWinner}
+                      onUpdatePlayer={updatePlayer}
+                    />
+                  ))}
+                </BracketPair>
               ))}
             </div>
           </RoundColumn>
 
           <RoundColumn title="TỨ KẾT" color="text-blue-700">
-            <div className="space-y-12 pt-8">
-              {Object.entries(data.quarter).map(([id, match]) => (
-                <MatchBox
-                  key={id}
-                  roundKey="quarter"
-                  matchId={id}
-                  match={match}
-                  adminMode={adminMode}
-                  onWinner={chooseWinner}
-                  onUpdatePlayer={updatePlayer}
-                />
+            <div className="space-y-28 pt-20">
+              {quarterPairs.map((pair, pairIndex) => (
+                <BracketPair key={pairIndex} tall>
+                  {pair.map(([id, match]) => (
+                    <MatchBox
+                      key={id}
+                      roundKey="quarter"
+                      matchId={id}
+                      match={match}
+                      adminMode={adminMode}
+                      onWinner={chooseWinner}
+                      onUpdatePlayer={updatePlayer}
+                    />
+                  ))}
+                </BracketPair>
               ))}
             </div>
           </RoundColumn>
 
           <RoundColumn title="BÁN KẾT" color="text-emerald-700">
-            <div className="space-y-32 pt-28">
-              {Object.entries(data.semi).map(([id, match]) => (
-                <MatchBox
-                  key={id}
-                  roundKey="semi"
-                  matchId={id}
-                  match={match}
-                  adminMode={adminMode}
-                  onWinner={chooseWinner}
-                  onUpdatePlayer={updatePlayer}
-                />
+            <div className="space-y-52 pt-56">
+              {semiEntries.map(([id, match]) => (
+                <div key={id} className="relative">
+                  <MatchBox
+                    roundKey="semi"
+                    matchId={id}
+                    match={match}
+                    adminMode={adminMode}
+                    onWinner={chooseWinner}
+                    onUpdatePlayer={updatePlayer}
+                  />
+                  <div className="absolute right-[-34px] top-1/2 h-[3px] w-8 bg-gradient-to-r from-slate-300 to-slate-500" />
+                </div>
               ))}
             </div>
           </RoundColumn>
 
           <RoundColumn title="CHUNG KẾT" color="text-yellow-600">
-            <div className="pt-44">
+            <div className="pt-[390px]">
               <MatchBox
                 roundKey="final"
                 matchId="ck"
@@ -328,6 +358,19 @@ function RoundColumn({ title, color, children }) {
   );
 }
 
+function BracketPair({ children, tall = false }) {
+  return (
+    <div className={classNames('relative', tall ? 'space-y-24' : 'space-y-3')}>
+      {children}
+
+      <div className="absolute right-[-30px] top-[25%] h-[3px] w-8 bg-gradient-to-r from-slate-300 to-slate-500" />
+      <div className="absolute right-[-30px] top-[75%] h-[3px] w-8 bg-gradient-to-r from-slate-300 to-slate-500" />
+      <div className="absolute right-[-30px] top-[25%] h-[50%] w-[3px] bg-slate-400" />
+      <div className="absolute right-[-60px] top-1/2 h-[3px] w-8 bg-gradient-to-r from-slate-400 to-slate-500" />
+    </div>
+  );
+}
+
 function MatchBox({
   roundKey,
   matchId,
@@ -343,9 +386,9 @@ function MatchBox({
   return (
     <div
       className={classNames(
-        'rounded-2xl border-2 bg-white p-3 shadow-md',
+        'rounded-2xl border-2 bg-white p-3 shadow-lg transition-all',
         match.winner ? 'border-emerald-400' : 'border-slate-200',
-        finalMatch && 'border-yellow-400 bg-yellow-50'
+        finalMatch && 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200'
       )}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -408,8 +451,10 @@ function PlayerButton({
   return (
     <div
       className={classNames(
-        'rounded-xl border px-3 py-2',
-        selected ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 bg-slate-50 text-slate-900'
+        'rounded-xl border px-3 py-2 transition-all',
+        selected
+          ? 'border-emerald-700 bg-emerald-600 text-white shadow-xl scale-[1.02]'
+          : 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50'
       )}
     >
       {adminMode ? (
@@ -462,7 +507,7 @@ function ChampionBox({ champion }) {
   }
 
   return (
-    <div className="mt-5 rounded-2xl bg-yellow-400 p-5 text-center shadow-lg">
+    <div className="mt-5 rounded-2xl bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 p-5 text-center shadow-2xl ring-4 ring-yellow-300">
       <Trophy className="mx-auto mb-2 text-yellow-900" size={48} />
       <div className="text-sm font-black uppercase text-yellow-900">
         Nhà vô địch

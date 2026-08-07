@@ -1,92 +1,44 @@
-
-export default function Knockout({
-  database = null,
-  adminMode = false,
-  dbPath = 'clb31tq/knockout/serieA16',
-}) {
-
 import React, { useEffect, useState } from 'react';
 import { RotateCcw, Trophy, Medal, CheckCircle2 } from 'lucide-react';
 import { onValue, ref, set } from 'firebase/database';
 
 const defaultKnockoutData = {
   round16: {
-    t1: {
-      title: 'T1',
-      p1: 'N bốc thăm 1 - Nhất bảng',
-      p2: 'H3 bốc thăm 1 - Hạng ba',
-      winner: '',
-    },
-    t2: {
-      title: 'T2',
-      p1: 'Nhì bảng A',
-      p2: 'Nhì bảng D',
-      winner: '',
-    },
-    t3: {
-      title: 'T3',
-      p1: 'N bốc thăm 2 - Nhất bảng',
-      p2: 'H3 bốc thăm 2 - Hạng ba',
-      winner: '',
-    },
-    t4: {
-      title: 'T4',
-      p1: 'Nhì bảng B',
-      p2: 'Nhì bảng C',
-      winner: '',
-    },
-    t5: {
-      title: 'T5',
-      p1: 'N bốc thăm 3 - Nhất bảng',
-      p2: 'H3 bốc thăm 3 - Hạng ba',
-      winner: '',
-    },
-    t6: {
-      title: 'T6',
-      p1: 'N còn lại 1 - Nhất bảng',
-      p2: 'Nhì bảng E',
-      winner: '',
-    },
-    t7: {
-      title: 'T7',
-      p1: 'N bốc thăm 4 - Nhất bảng',
-      p2: 'H3 bốc thăm 4 - Hạng ba',
-      winner: '',
-    },
-    t8: {
-      title: 'T8',
-      p1: 'N còn lại 2 - Nhất bảng',
-      p2: 'Nhì bảng F',
-      winner: '',
-    },
+    t1: { title: 'T1', p1: 'N bốc thăm 1 - Nhất bảng', p2: 'H3 bốc thăm 1 - Hạng ba', winner: '' },
+    t2: { title: 'T2', p1: 'Nhì bảng A', p2: 'Nhì bảng D', winner: '' },
+    t3: { title: 'T3', p1: 'N bốc thăm 2 - Nhất bảng', p2: 'H3 bốc thăm 2 - Hạng ba', winner: '' },
+    t4: { title: 'T4', p1: 'Nhì bảng B', p2: 'Nhì bảng C', winner: '' },
+    t5: { title: 'T5', p1: 'N bốc thăm 3 - Nhất bảng', p2: 'H3 bốc thăm 3 - Hạng ba', winner: '' },
+    t6: { title: 'T6', p1: 'N còn lại 1 - Nhất bảng', p2: 'Nhì bảng E', winner: '' },
+    t7: { title: 'T7', p1: 'N bốc thăm 4 - Nhất bảng', p2: 'H3 bốc thăm 4 - Hạng ba', winner: '' },
+    t8: { title: 'T8', p1: 'N còn lại 2 - Nhất bảng', p2: 'Nhì bảng F', winner: '' },
   },
-
   quarter: {
     tk1: { title: 'TK1', p1: '', p2: '', winner: '' },
     tk2: { title: 'TK2', p1: '', p2: '', winner: '' },
     tk3: { title: 'TK3', p1: '', p2: '', winner: '' },
     tk4: { title: 'TK4', p1: '', p2: '', winner: '' },
   },
-
   semi: {
     bk1: { title: 'BK1', p1: '', p2: '', winner: '' },
     bk2: { title: 'BK2', p1: '', p2: '', winner: '' },
   },
-
   final: {
     ck: { title: 'CHUNG KẾT', p1: '', p2: '', winner: '' },
   },
-
   thirdPlace: {
     p1: '',
     p2: '',
   },
-
   champion: '',
 };
 
 function classNames(...items) {
   return items.filter(Boolean).join(' ');
+}
+
+function cloneData(value) {
+  return JSON.parse(JSON.stringify(value));
 }
 
 function prepareKnockoutData(value) {
@@ -140,19 +92,16 @@ export default function Knockout({
     }
 
     const knockoutRef = ref(database, dbPath);
-
     const unsubscribe = onValue(
       knockoutRef,
       snapshot => {
         const value = snapshot.val();
-
         if (value) {
           setData(prepareKnockoutData(value));
         } else {
           set(knockoutRef, defaultKnockoutData);
           setData(defaultKnockoutData);
         }
-
         setConnected(true);
       },
       () => {
@@ -165,7 +114,6 @@ export default function Knockout({
 
   const saveData = async nextData => {
     const payload = prepareKnockoutData(nextData);
-
     setData(payload);
 
     if (database) {
@@ -175,113 +123,56 @@ export default function Knockout({
     }
   };
 
+  const clearDownstreamIfNeeded = (next, oldWinner) => {
+    if (!oldWinner) return;
+
+    Object.keys(next.quarter).forEach(key => {
+      const match = next.quarter[key];
+      if (match.p1 === oldWinner) match.p1 = '';
+      if (match.p2 === oldWinner) match.p2 = '';
+      if (match.winner === oldWinner) match.winner = '';
+    });
+
+    Object.keys(next.semi).forEach(key => {
+      const match = next.semi[key];
+      if (match.p1 === oldWinner) match.p1 = '';
+      if (match.p2 === oldWinner) match.p2 = '';
+      if (match.winner === oldWinner) match.winner = '';
+    });
+
+    if (next.final.ck.p1 === oldWinner) next.final.ck.p1 = '';
+    if (next.final.ck.p2 === oldWinner) next.final.ck.p2 = '';
+    if (next.final.ck.winner === oldWinner) next.final.ck.winner = '';
+    if (next.thirdPlace.p1 === oldWinner) next.thirdPlace.p1 = '';
+    if (next.thirdPlace.p2 === oldWinner) next.thirdPlace.p2 = '';
+    if (next.champion === oldWinner) next.champion = '';
+  };
+
   const pushWinnerForward = (next, matchId, winner, oldWinner) => {
-    if (matchId === 't1') {
-      next.quarter.tk1.p1 = winner;
-      if (oldWinner && next.quarter.tk1.winner === oldWinner) {
-        next.quarter.tk1.winner = '';
-      }
-    }
+    clearDownstreamIfNeeded(next, oldWinner);
 
-    if (matchId === 't2') {
-      next.quarter.tk1.p2 = winner;
-      if (oldWinner && next.quarter.tk1.winner === oldWinner) {
-        next.quarter.tk1.winner = '';
-      }
-    }
+    if (matchId === 't1') next.quarter.tk1.p1 = winner;
+    if (matchId === 't2') next.quarter.tk1.p2 = winner;
+    if (matchId === 't3') next.quarter.tk2.p1 = winner;
+    if (matchId === 't4') next.quarter.tk2.p2 = winner;
+    if (matchId === 't5') next.quarter.tk3.p1 = winner;
+    if (matchId === 't6') next.quarter.tk3.p2 = winner;
+    if (matchId === 't7') next.quarter.tk4.p1 = winner;
+    if (matchId === 't8') next.quarter.tk4.p2 = winner;
 
-    if (matchId === 't3') {
-      next.quarter.tk2.p1 = winner;
-      if (oldWinner && next.quarter.tk2.winner === oldWinner) {
-        next.quarter.tk2.winner = '';
-      }
-    }
-
-    if (matchId === 't4') {
-      next.quarter.tk2.p2 = winner;
-      if (oldWinner && next.quarter.tk2.winner === oldWinner) {
-        next.quarter.tk2.winner = '';
-      }
-    }
-
-    if (matchId === 't5') {
-      next.quarter.tk3.p1 = winner;
-      if (oldWinner && next.quarter.tk3.winner === oldWinner) {
-        next.quarter.tk3.winner = '';
-      }
-    }
-
-    if (matchId === 't6') {
-      next.quarter.tk3.p2 = winner;
-      if (oldWinner && next.quarter.tk3.winner === oldWinner) {
-        next.quarter.tk3.winner = '';
-      }
-    }
-
-    if (matchId === 't7') {
-      next.quarter.tk4.p1 = winner;
-      if (oldWinner && next.quarter.tk4.winner === oldWinner) {
-        next.quarter.tk4.winner = '';
-      }
-    }
-
-    if (matchId === 't8') {
-      next.quarter.tk4.p2 = winner;
-      if (oldWinner && next.quarter.tk4.winner === oldWinner) {
-        next.quarter.tk4.winner = '';
-      }
-    }
-
-    if (matchId === 'tk1') {
-      next.semi.bk1.p1 = winner;
-      if (oldWinner && next.semi.bk1.winner === oldWinner) {
-        next.semi.bk1.winner = '';
-      }
-    }
-
-    if (matchId === 'tk2') {
-      next.semi.bk1.p2 = winner;
-      if (oldWinner && next.semi.bk1.winner === oldWinner) {
-        next.semi.bk1.winner = '';
-      }
-    }
-
-    if (matchId === 'tk3') {
-      next.semi.bk2.p1 = winner;
-      if (oldWinner && next.semi.bk2.winner === oldWinner) {
-        next.semi.bk2.winner = '';
-      }
-    }
-
-    if (matchId === 'tk4') {
-      next.semi.bk2.p2 = winner;
-      if (oldWinner && next.semi.bk2.winner === oldWinner) {
-        next.semi.bk2.winner = '';
-      }
-    }
+    if (matchId === 'tk1') next.semi.bk1.p1 = winner;
+    if (matchId === 'tk2') next.semi.bk1.p2 = winner;
+    if (matchId === 'tk3') next.semi.bk2.p1 = winner;
+    if (matchId === 'tk4') next.semi.bk2.p2 = winner;
 
     if (matchId === 'bk1') {
       next.final.ck.p1 = winner;
-
-      const loser = getLoser(next.semi.bk1, winner);
-      next.thirdPlace.p1 = loser;
-
-      if (oldWinner && next.final.ck.winner === oldWinner) {
-        next.final.ck.winner = '';
-        next.champion = '';
-      }
+      next.thirdPlace.p1 = getLoser(next.semi.bk1, winner);
     }
 
     if (matchId === 'bk2') {
       next.final.ck.p2 = winner;
-
-      const loser = getLoser(next.semi.bk2, winner);
-      next.thirdPlace.p2 = loser;
-
-      if (oldWinner && next.final.ck.winner === oldWinner) {
-        next.final.ck.winner = '';
-        next.champion = '';
-      }
+      next.thirdPlace.p2 = getLoser(next.semi.bk2, winner);
     }
 
     if (matchId === 'ck') {
@@ -293,22 +184,25 @@ export default function Knockout({
     if (!adminMode) return;
     if (!winner) return;
 
-    const next = prepareKnockoutData(structuredClone(data));
+    const next = prepareKnockoutData(cloneData(data));
     const match = next[roundKey][matchId];
     const oldWinner = match.winner;
-
     match.winner = winner;
 
     pushWinnerForward(next, matchId, winner, oldWinner);
-
     saveData(next);
   };
 
   const updatePlayer = (roundKey, matchId, playerKey, value) => {
     if (!adminMode) return;
 
-    const next = prepareKnockoutData(structuredClone(data));
+    const next = prepareKnockoutData(cloneData(data));
     next[roundKey][matchId][playerKey] = value;
+
+    if (next[roundKey][matchId].winner && next[roundKey][matchId].winner !== next[roundKey][matchId].p1 && next[roundKey][matchId].winner !== next[roundKey][matchId].p2) {
+      next[roundKey][matchId].winner = '';
+    }
+
     saveData(next);
   };
 
@@ -410,7 +304,6 @@ export default function Knockout({
               />
 
               <ChampionBox champion={data.champion} />
-
               <ThirdPlaceBox thirdPlace={data.thirdPlace} />
             </div>
           </RoundColumn>
@@ -459,10 +352,10 @@ function MatchBox({
         <div
           className={classNames(
             'rounded-lg px-3 py-1 text-sm font-black text-white',
-            matchId.startsWith('t') ? 'bg-red-700' : '',
             matchId.startsWith('tk') ? 'bg-blue-700' : '',
             matchId.startsWith('bk') ? 'bg-emerald-700' : '',
-            matchId === 'ck' ? 'bg-yellow-600' : ''
+            matchId === 'ck' ? 'bg-yellow-600' : '',
+            matchId.startsWith('t') && !matchId.startsWith('tk') ? 'bg-red-700' : ''
           )}
         >
           {match.title}
@@ -532,6 +425,7 @@ function PlayerButton({
           />
 
           <button
+            type="button"
             onClick={onClick}
             disabled={disabled}
             className={classNames(

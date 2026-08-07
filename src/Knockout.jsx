@@ -262,7 +262,7 @@ export default function Knockout({
       </div>
 
       <div className="overflow-x-auto rounded-2xl bg-slate-50 p-3">
-        <div className="grid min-w-[900px] grid-cols-[240px_190px_190px_220px] gap-4">
+        <div className="grid min-w-[780px] grid-cols-[220px_170px_170px_190px] gap-2">
           <RoundColumn title="VÒNG 1/8" color="text-red-700">
             <div className="space-y-5">
               {round16Pairs.map((pair, pairIndex) => (
@@ -284,7 +284,7 @@ export default function Knockout({
           </RoundColumn>
 
           <RoundColumn title="TỨ KẾT" color="text-blue-700">
-            <div className="space-y-12 pt-7">
+            <div className="space-y-6 pt-4">
               {quarterPairs.map((pair, pairIndex) => (
                 <BracketPair key={pairIndex} tall>
                   {pair.map(([id, match]) => (
@@ -304,7 +304,7 @@ export default function Knockout({
           </RoundColumn>
 
           <RoundColumn title="BÁN KẾT" color="text-emerald-700">
-            <div className="pt-20">
+            <div className="pt-10">
               <BracketPair tall>
                 {semiEntries.map(([id, match]) => (
                   <MatchBox
@@ -322,7 +322,7 @@ export default function Knockout({
           </RoundColumn>
 
           <RoundColumn title="CHUNG KẾT" color="text-yellow-600">
-            <div className="pt-[105px]">
+            <div className="pt-[60px]">
               <MatchBox
                 roundKey="final"
                 matchId="ck"
@@ -350,7 +350,7 @@ export default function Knockout({
 function RoundColumn({ title, color, children }) {
   return (
     <div>
-      <div className={classNames('mb-3 text-center text-lg font-black', color)}>
+      <div className={classNames('mb-2 text-center text-base font-black', color)}>
         {title}
       </div>
       {children}

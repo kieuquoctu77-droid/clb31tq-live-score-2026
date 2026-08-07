@@ -80,6 +80,7 @@ export default function Knockout({
   useEffect(() => {
     if (!database) {
       const saved = localStorage.getItem('clb31tq-knockout');
+
       if (saved) {
         try {
           setData(prepareKnockoutData(JSON.parse(saved)));
@@ -87,21 +88,25 @@ export default function Knockout({
           setData(defaultKnockoutData);
         }
       }
+
       setConnected(false);
       return;
     }
 
     const knockoutRef = ref(database, dbPath);
+
     const unsubscribe = onValue(
       knockoutRef,
       snapshot => {
         const value = snapshot.val();
+
         if (value) {
           setData(prepareKnockoutData(value));
         } else {
           set(knockoutRef, defaultKnockoutData);
           setData(defaultKnockoutData);
         }
+
         setConnected(true);
       },
       () => {
@@ -128,6 +133,7 @@ export default function Knockout({
 
     Object.keys(next.quarter).forEach(key => {
       const match = next.quarter[key];
+
       if (match.p1 === oldWinner) match.p1 = '';
       if (match.p2 === oldWinner) match.p2 = '';
       if (match.winner === oldWinner) match.winner = '';
@@ -135,6 +141,7 @@ export default function Knockout({
 
     Object.keys(next.semi).forEach(key => {
       const match = next.semi[key];
+
       if (match.p1 === oldWinner) match.p1 = '';
       if (match.p2 === oldWinner) match.p2 = '';
       if (match.winner === oldWinner) match.winner = '';
@@ -143,8 +150,10 @@ export default function Knockout({
     if (next.final.ck.p1 === oldWinner) next.final.ck.p1 = '';
     if (next.final.ck.p2 === oldWinner) next.final.ck.p2 = '';
     if (next.final.ck.winner === oldWinner) next.final.ck.winner = '';
+
     if (next.thirdPlace.p1 === oldWinner) next.thirdPlace.p1 = '';
     if (next.thirdPlace.p2 === oldWinner) next.thirdPlace.p2 = '';
+
     if (next.champion === oldWinner) next.champion = '';
   };
 
@@ -153,15 +162,19 @@ export default function Knockout({
 
     if (matchId === 't1') next.quarter.tk1.p1 = winner;
     if (matchId === 't2') next.quarter.tk1.p2 = winner;
+
     if (matchId === 't3') next.quarter.tk2.p1 = winner;
     if (matchId === 't4') next.quarter.tk2.p2 = winner;
+
     if (matchId === 't5') next.quarter.tk3.p1 = winner;
     if (matchId === 't6') next.quarter.tk3.p2 = winner;
+
     if (matchId === 't7') next.quarter.tk4.p1 = winner;
     if (matchId === 't8') next.quarter.tk4.p2 = winner;
 
     if (matchId === 'tk1') next.semi.bk1.p1 = winner;
     if (matchId === 'tk2') next.semi.bk1.p2 = winner;
+
     if (matchId === 'tk3') next.semi.bk2.p1 = winner;
     if (matchId === 'tk4') next.semi.bk2.p2 = winner;
 
@@ -181,367 +194,6 @@ export default function Knockout({
   };
 
   const chooseWinner = (roundKey, matchId, winner) => {
-    if (!adminMode) return;
-    if (!winner) return;
-
-    const next = prepareKnockoutData(cloneData(data));
-    const match = next[roundKey][matchId];
-    const oldWinner = match.winner;
-    match.winner = winner;
-
-    pushWinnerForward(next, matchId, winner, oldWinner);
-    saveData(next);
-  };
-
-  const updatePlayer = (roundKey, matchId, playerKey, value) => {
-    if (!adminMode) return;
-
-    const next = prepareKnockoutData(cloneData(data));
-    next[roundKey][matchId][playerKey] = value;
-
-    if (
-      next[roundKey][matchId].winner &&
-      next[roundKey][matchId].winner !== next[roundKey][matchId].p1 &&
-      next[roundKey][matchId].winner !== next[roundKey][matchId].p2
-    ) {
-      next[roundKey][matchId].winner = '';
-    }
-
-    saveData(next);
-  };
-
-  const resetKnockout = () => {
-    if (!adminMode) return;
-
-    const confirmReset = window.confirm('Reset toàn bộ sơ đồ Knock-out?');
-    if (!confirmReset) return;
-
-    saveData(defaultKnockoutData);
-  };
-
-  const round16Entries = Object.entries(data.round16);
-  const quarterEntries = Object.entries(data.quarter);
-  const semiEntries = Object.entries(data.semi);
-
-  const round16Pairs = [
-    round16Entries.slice(0, 2),
-    round16Entries.slice(2, 4),
-    round16Entries.slice(4, 6),
-    round16Entries.slice(6, 8),
-  ];
-
-  const quarterPairs = [
-    quarterEntries.slice(0, 2),
-    quarterEntries.slice(2, 4),
-  ];
-
-  return (
-    <div className="rounded-2xl bg-white p-3 shadow-xl sm:p-4">
-      <div className="mb-4 flex flex-col gap-2 border-b border-slate-200 pb-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="text-xl font-black text-red-700 sm:text-2xl">
-            🏓 SƠ ĐỒ KNOCK-OUT SERIE A - 16 VĐV
-          </div>
-          <div className="mt-1 text-xs font-bold text-slate-500">
-            Bấm “Thắng” để tự động đẩy VĐV lên nhánh tiếp theo.
-          </div>
-          <div className="mt-1 text-xs font-bold text-slate-400">
-            Trạng thái: {connected ? 'Realtime Firebase' : 'Local'}
-          </div>
-        </div>
-
-        {adminMode && (
-          <button
-            onClick={resetKnockout}
-            className="flex items-center justify-center gap-2 rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-sm font-black text-red-700 hover:bg-red-100"
-          >
-            <RotateCcw size={17} />
-            Reset Knock-out
-          </button>
-        )}
-      </div>
-
-      <div className="overflow-x-auto rounded-2xl bg-slate-50 p-3">
-        <div className="grid min-w-[980px] grid-cols-[240px_190px_190px_220px] gap-4">
-          <RoundColumn title="VÒNG 1/8" color="text-red-700">
-            <div className="space-y-5">
-              {round16Pairs.map((pair, pairIndex) => (
-                <BracketPair key={pairIndex}>
-                  {pair.map(([id, match]) => (
-                    <MatchBox
-                      key={id}
-                      roundKey="round16"
-                      matchId={id}
-                      match={match}
-                      adminMode={adminMode}
-                      onWinner={chooseWinner}
-                      onUpdatePlayer={updatePlayer}
-                    />
-                  ))}
-                </BracketPair>
-              ))}
-            </div>
-          </RoundColumn>
-
-          <RoundColumn title="TỨ KẾT" color="text-blue-700">
-            <div className="space-y-8 pt-4">
-              {quarterPairs.map((pair, pairIndex) => (
-                <BracketPair key={pairIndex} tall>
-                  {pair.map(([id, match]) => (
-                    <MatchBox
-                      key={id}
-                      roundKey="quarter"
-                      matchId={id}
-                      match={match}
-                      adminMode={adminMode}
-                      onWinner={chooseWinner}
-                      onUpdatePlayer={updatePlayer}
-                    />
-                  ))}
-                </BracketPair>
-              ))}
-            </div>
-          </RoundColumn>
-
-          <RoundColumn title="BÁN KẾT" color="text-emerald-700">
-            <div className="pt-20">
-              <BracketPair tall>
-                {semiEntries.map(([id, match]) => (
-                  <MatchBox
-                    key={id}
-                    roundKey="semi"
-                    matchId={id}
-                    match={match}
-                    adminMode={adminMode}
-                    onWinner={chooseWinner}
-                    onUpdatePlayer={updatePlayer}
-                  />
-                ))}
-              </BracketPair>
-            </div>
-          </RoundColumn>
-
-          <RoundColumn title="CHUNG KẾT" color="text-yellow-600">
-            <div className="pt-[170px]">
-              <MatchBox
-                roundKey="final"
-                matchId="ck"
-                match={data.final.ck}
-                adminMode={adminMode}
-                onWinner={chooseWinner}
-                onUpdatePlayer={updatePlayer}
-                finalMatch
-              />
-
-              <ChampionBox champion={data.champion} />
-              <ThirdPlaceBox thirdPlace={data.thirdPlace} />
-            </div>
-          </RoundColumn>
-        </div>
-      </div>
-
-      <div className="mt-5 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
-        Ghi chú: N = VĐV nhất bảng theo thứ tự bốc thăm. H3 = VĐV hạng ba xuất sắc theo thứ tự bốc thăm.
-      </div>
-    </div>
-  );
-}
-
-function RoundColumn({ title, color, children }) {
-  return (
-    <div>
-      <div className={classNames('mb-2 text-center text-base font-black', color)}>
-        {title}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function BracketPair({ children, tall = false }) {
-  return (
-    <div className={classNames('relative', tall ? 'space-y-24' : 'space-y-3')}>
-      {children}
-
-      <div className="absolute right-[-28px] top-[25%] h-[2px] w-7 rounded-full bg-slate-400" />
-      <div className="absolute right-[-28px] top-[75%] h-[2px] w-7 rounded-full bg-slate-400" />
-      <div className="absolute right-[-28px] top-[25%] h-[50%] w-[2px] rounded-full bg-slate-400" />
-      <div className="absolute right-[-76px] top-1/2 h-[2px] w-12 rounded-full bg-slate-400" />
-    </div>
-  );
-}
-
-function MatchBox({
-  roundKey,
-  matchId,
-  match,
-  adminMode,
-  onWinner,
-  onUpdatePlayer,
-  finalMatch = false,
-}) {
-  const hasP1 = String(match.p1 || '').trim();
-  const hasP2 = String(match.p2 || '').trim();
-
-  return (
-    <div
-      className={classNames(
-        'rounded-lg border bg-white p-1.5 shadow transition-all',
-        match.winner ? 'border-emerald-400' : 'border-slate-200',
-        finalMatch && 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200'
-      )}
-    >
-      <div className="mb-1 flex items-center justify-between gap-1">
-        <div
-          className={classNames(
-            'rounded-md px-2 py-0.5 text-xs font-bold text-white',
-            matchId.startsWith('tk') ? 'bg-blue-700' : '',
-            matchId.startsWith('bk') ? 'bg-emerald-700' : '',
-            matchId === 'ck' ? 'bg-yellow-600' : '',
-            matchId.startsWith('t') && !matchId.startsWith('tk') ? 'bg-red-700' : ''
-          )}
-        >
-          {match.title}
-        </div>
-
-        {match.winner && (
-          <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-            <CheckCircle2 size={12} />
-            Đã chọn
-          </div>
-        )}
-      </div>
-
-      <PlayerButton
-        value={match.p1}
-        selected={match.winner === match.p1}
-        disabled={!hasP1 || !adminMode}
-        onClick={() => onWinner(roundKey, matchId, match.p1)}
-        onChange={value => onUpdatePlayer(roundKey, matchId, 'p1', value)}
-        adminMode={adminMode}
-        placeholder="VĐV 1"
-      />
-
-      <div className="my-1 text-center text-xs font-bold text-slate-400">
-        VS
-      </div>
-
-      <PlayerButton
-        value={match.p2}
-        selected={match.winner === match.p2}
-        disabled={!hasP2 || !adminMode}
-        onClick={() => onWinner(roundKey, matchId, match.p2)}
-        onChange={value => onUpdatePlayer(roundKey, matchId, 'p2', value)}
-        adminMode={adminMode}
-        placeholder="VĐV 2"
-      />
-    </div>
-  );
-}
-
-function PlayerButton({
-  value,
-  selected,
-  disabled,
-  onClick,
-  onChange,
-  adminMode,
-  placeholder,
-}) {
-  return (
-    <div
-      className={classNames(
-        'rounded-lg border px-2 py-1 transition-all',
-        selected
-          ? 'border-emerald-700 bg-emerald-600 text-white shadow-md'
-          : 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50'
-      )}
-    >
-      {adminMode ? (
-        <div className="flex items-center gap-2">
-          <input
-            value={value || ''}
-            onChange={e => onChange(e.target.value)}
-            placeholder={placeholder}
-            className={classNames(
-              'min-w-0 flex-1 bg-transparent text-xs font-bold outline-none',
-              selected ? 'text-white placeholder:text-emerald-100' : 'text-slate-900 placeholder:text-slate-400'
-            )}
-          />
-
-          <button
-            type="button"
-            onClick={onClick}
-            disabled={disabled}
-            className={classNames(
-              'shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold',
-              selected
-                ? 'bg-white text-emerald-700'
-                : disabled
-                ? 'bg-slate-200 text-slate-400'
-                : 'bg-emerald-600 text-white hover:bg-emerald-700'
-            )}
-          >
-            Thắng
-          </button>
-        </div>
-      ) : (
-        <div className="text-sm font-black">
-          {value || '-'}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ChampionBox({ champion }) {
-  if (!champion) {
-    return (
-      <div className="mt-3 rounded-xl border-2 border-dashed border-yellow-300 bg-yellow-50 p-3 text-center">
-        <Trophy className="mx-auto mb-1 text-yellow-500" size={30} />
-        <div className="text-sm font-black text-yellow-700">
-          Chưa có nhà vô địch
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-3 rounded-xl bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 p-3 text-center shadow-xl ring-2 ring-yellow-300">
-      <Trophy className="mx-auto mb-1 text-yellow-900" size={34} />
-      <div className="text-sm font-black uppercase text-yellow-900">
-        Nhà vô địch
-      </div>
-      <div className="mt-1 text-lg font-black text-slate-950">
-        {champion}
-      </div>
-    </div>
-  );
-}
-
-function ThirdPlaceBox({ thirdPlace }) {
-  return (
-    <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
-      <div className="mb-2 flex items-center justify-center gap-1 rounded-lg bg-blue-700 px-2 py-1 text-center text-xs font-black text-white">
-        <Medal size={14} />
-        ĐỒNG HẠNG 3
-      </div>
-
-      <div className="space-y-1 text-center text-xs font-bold text-slate-800">
-        <div>
-          Thua BK1: {thirdPlace.p1 || '-'}
-        </div>
-        <div>
-          Thua BK2: {thirdPlace.p2 || '-'}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function getLoser(match, winner) {
-  if (!match) return '';
-  if (match.p1 === winner) return match.p2 || '';
-  if (match.p2 === winner) return match.p1 || '';
+   p2 === winner) return match.p1 || '';
   return '';
 }

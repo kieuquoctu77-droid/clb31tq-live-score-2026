@@ -236,13 +236,13 @@ export default function Knockout({
   ];
 
   return (
-    <div className="rounded-3xl bg-white p-4 shadow-2xl sm:p-6">
-      <div className="mb-5 flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="rounded-2xl bg-white p-3 shadow-xl sm:p-4">
+      <div className="mb-4 flex flex-col gap-2 border-b border-slate-200 pb-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <div className="text-2xl font-black text-red-700 sm:text-3xl">
+          <div className="text-xl font-black text-red-700 sm:text-2xl">
             🏓 SƠ ĐỒ KNOCK-OUT SERIE A - 16 VĐV
           </div>
-          <div className="mt-1 text-sm font-bold text-slate-500">
+          <div className="mt-1 text-xs font-bold text-slate-500">
             Bấm “Thắng” để tự động đẩy VĐV lên nhánh tiếp theo.
           </div>
           <div className="mt-1 text-xs font-bold text-slate-400">
@@ -253,7 +253,7 @@ export default function Knockout({
         {adminMode && (
           <button
             onClick={resetKnockout}
-            className="flex items-center justify-center gap-2 rounded-xl border border-red-300 bg-red-50 px-4 py-3 font-black text-red-700 hover:bg-red-100"
+            className="flex items-center justify-center gap-2 rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-sm font-black text-red-700 hover:bg-red-100"
           >
             <RotateCcw size={17} />
             Reset Knock-out
@@ -261,10 +261,10 @@ export default function Knockout({
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-3xl bg-slate-50 p-4">
-        <div className="grid min-w-[1400px] grid-cols-[380px_270px_270px_330px] gap-10">
+      <div className="overflow-x-auto rounded-2xl bg-slate-50 p-3">
+        <div className="grid min-w-[900px] grid-cols-[240px_190px_190px_220px] gap-4">
           <RoundColumn title="VÒNG 1/8" color="text-red-700">
-            <div className="space-y-8">
+            <div className="space-y-5">
               {round16Pairs.map((pair, pairIndex) => (
                 <BracketPair key={pairIndex}>
                   {pair.map(([id, match]) => (
@@ -284,7 +284,7 @@ export default function Knockout({
           </RoundColumn>
 
           <RoundColumn title="TỨ KẾT" color="text-blue-700">
-            <div className="space-y-28 pt-20">
+            <div className="space-y-10 pt-8">
               {quarterPairs.map((pair, pairIndex) => (
                 <BracketPair key={pairIndex} tall>
                   {pair.map(([id, match]) => (
@@ -304,7 +304,7 @@ export default function Knockout({
           </RoundColumn>
 
           <RoundColumn title="BÁN KẾT" color="text-emerald-700">
-            <div className="space-y-52 pt-56">
+            <div className="space-y-16 pt-20">
               {semiEntries.map(([id, match]) => (
                 <div key={id} className="relative">
                   <MatchBox
@@ -315,14 +315,14 @@ export default function Knockout({
                     onWinner={chooseWinner}
                     onUpdatePlayer={updatePlayer}
                   />
-                  <div className="absolute right-[-34px] top-1/2 h-[3px] w-8 bg-gradient-to-r from-slate-300 to-slate-500" />
+                  <div className="absolute right-[-22px] top-1/2 h-[2px] w-5 bg-gradient-to-r from-slate-300 to-slate-500" />
                 </div>
               ))}
             </div>
           </RoundColumn>
 
           <RoundColumn title="CHUNG KẾT" color="text-yellow-600">
-            <div className="pt-[390px]">
+            <div className="pt-[170px]">
               <MatchBox
                 roundKey="final"
                 matchId="ck"
@@ -350,7 +350,7 @@ export default function Knockout({
 function RoundColumn({ title, color, children }) {
   return (
     <div>
-      <div className={classNames('mb-4 text-center text-xl font-black', color)}>
+      <div className={classNames('mb-3 text-center text-lg font-black', color)}>
         {title}
       </div>
       {children}
@@ -360,13 +360,13 @@ function RoundColumn({ title, color, children }) {
 
 function BracketPair({ children, tall = false }) {
   return (
-    <div className={classNames('relative', tall ? 'space-y-24' : 'space-y-3')}>
+    <div className={classNames('relative', tall ? 'space-y-10' : 'space-y-2')}>
       {children}
 
-      <div className="absolute right-[-30px] top-[25%] h-[3px] w-8 bg-gradient-to-r from-slate-300 to-slate-500" />
-      <div className="absolute right-[-30px] top-[75%] h-[3px] w-8 bg-gradient-to-r from-slate-300 to-slate-500" />
-      <div className="absolute right-[-30px] top-[25%] h-[50%] w-[3px] bg-slate-400" />
-      <div className="absolute right-[-60px] top-1/2 h-[3px] w-8 bg-gradient-to-r from-slate-400 to-slate-500" />
+      <div className="absolute right-[-18px] top-[25%] h-[2px] w-5 bg-gradient-to-r from-slate-300 to-slate-500" />
+      <div className="absolute right-[-18px] top-[75%] h-[2px] w-5 bg-gradient-to-r from-slate-300 to-slate-500" />
+      <div className="absolute right-[-18px] top-[25%] h-[50%] w-[2px] bg-slate-400" />
+      <div className="absolute right-[-36px] top-1/2 h-[2px] w-5 bg-gradient-to-r from-slate-400 to-slate-500" />
     </div>
   );
 }
@@ -386,15 +386,15 @@ function MatchBox({
   return (
     <div
       className={classNames(
-        'rounded-2xl border-2 bg-white p-3 shadow-lg transition-all',
+        'rounded-lg border bg-white p-1.5 shadow transition-all',
         match.winner ? 'border-emerald-400' : 'border-slate-200',
         finalMatch && 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200'
       )}
     >
-      <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="mb-1 flex items-center justify-between gap-1">
         <div
           className={classNames(
-            'rounded-lg px-3 py-1 text-sm font-black text-white',
+            'rounded-md px-2 py-0.5 text-xs font-bold text-white',
             matchId.startsWith('tk') ? 'bg-blue-700' : '',
             matchId.startsWith('bk') ? 'bg-emerald-700' : '',
             matchId === 'ck' ? 'bg-yellow-600' : '',
@@ -405,8 +405,8 @@ function MatchBox({
         </div>
 
         {match.winner && (
-          <div className="flex items-center gap-1 text-xs font-black text-emerald-700">
-            <CheckCircle2 size={14} />
+          <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+            <CheckCircle2 size={12} />
             Đã chọn
           </div>
         )}
@@ -422,7 +422,7 @@ function MatchBox({
         placeholder="VĐV 1"
       />
 
-      <div className="my-2 text-center text-sm font-black text-slate-400">
+      <div className="my-1 text-center text-xs font-bold text-slate-400">
         VS
       </div>
 
@@ -451,9 +451,9 @@ function PlayerButton({
   return (
     <div
       className={classNames(
-        'rounded-xl border px-3 py-2 transition-all',
+        'rounded-lg border px-2 py-1 transition-all',
         selected
-          ? 'border-emerald-700 bg-emerald-600 text-white shadow-xl scale-[1.02]'
+          ? 'border-emerald-700 bg-emerald-600 text-white shadow-md'
           : 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50'
       )}
     >
@@ -464,7 +464,7 @@ function PlayerButton({
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
             className={classNames(
-              'min-w-0 flex-1 bg-transparent text-sm font-black outline-none',
+              'min-w-0 flex-1 bg-transparent text-xs font-bold outline-none',
               selected ? 'text-white placeholder:text-emerald-100' : 'text-slate-900 placeholder:text-slate-400'
             )}
           />
@@ -474,7 +474,7 @@ function PlayerButton({
             onClick={onClick}
             disabled={disabled}
             className={classNames(
-              'shrink-0 rounded-lg px-2 py-1 text-xs font-black',
+              'shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold',
               selected
                 ? 'bg-white text-emerald-700'
                 : disabled
@@ -497,9 +497,9 @@ function PlayerButton({
 function ChampionBox({ champion }) {
   if (!champion) {
     return (
-      <div className="mt-5 rounded-2xl border-2 border-dashed border-yellow-300 bg-yellow-50 p-5 text-center">
-        <Trophy className="mx-auto mb-2 text-yellow-500" size={42} />
-        <div className="text-lg font-black text-yellow-700">
+      <div className="mt-3 rounded-xl border-2 border-dashed border-yellow-300 bg-yellow-50 p-3 text-center">
+        <Trophy className="mx-auto mb-1 text-yellow-500" size={30} />
+        <div className="text-sm font-black text-yellow-700">
           Chưa có nhà vô địch
         </div>
       </div>
@@ -507,12 +507,12 @@ function ChampionBox({ champion }) {
   }
 
   return (
-    <div className="mt-5 rounded-2xl bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 p-5 text-center shadow-2xl ring-4 ring-yellow-300">
-      <Trophy className="mx-auto mb-2 text-yellow-900" size={48} />
+    <div className="mt-3 rounded-xl bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 p-3 text-center shadow-xl ring-2 ring-yellow-300">
+      <Trophy className="mx-auto mb-1 text-yellow-900" size={34} />
       <div className="text-sm font-black uppercase text-yellow-900">
         Nhà vô địch
       </div>
-      <div className="mt-1 text-2xl font-black text-slate-950">
+      <div className="mt-1 text-lg font-black text-slate-950">
         {champion}
       </div>
     </div>
@@ -521,13 +521,13 @@ function ChampionBox({ champion }) {
 
 function ThirdPlaceBox({ thirdPlace }) {
   return (
-    <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-4">
-      <div className="mb-3 flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-3 py-2 text-center font-black text-white">
-        <Medal size={18} />
+    <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
+      <div className="mb-2 flex items-center justify-center gap-1 rounded-lg bg-blue-700 px-2 py-1 text-center text-xs font-black text-white">
+        <Medal size={14} />
         ĐỒNG HẠNG 3
       </div>
 
-      <div className="space-y-2 text-center text-sm font-black text-slate-800">
+      <div className="space-y-1 text-center text-xs font-bold text-slate-800">
         <div>
           Thua BK1: {thirdPlace.p1 || '-'}
         </div>

@@ -284,7 +284,7 @@ export default function Knockout({
           </RoundColumn>
 
           <RoundColumn title="TỨ KẾT" color="text-blue-700">
-            <div className="space-y-28 pt-20">
+            <div className="space-y-[170px] pt-[42px]">
               {quarterPairs.map((pair, pairIndex) => (
                 <BracketPair key={pairIndex} tall>
                   {pair.map(([id, match]) => (
@@ -358,17 +358,38 @@ function RoundColumn({ title, color, children }) {
   );
 }
 
-function BracketPair({ children, tall = false }) {
-  return (
-    <div className={classNames('relative', tall ? 'space-y-24' : 'space-y-3')}>
-      {children}
-
-      <div className="absolute right-[-30px] top-[25%] h-[3px] w-8 bg-gradient-to-r from-slate-300 to-slate-500" />
-      <div className="absolute right-[-30px] top-[75%] h-[3px] w-8 bg-gradient-to-r from-slate-300 to-slate-500" />
-      <div className="absolute right-[-30px] top-[25%] h-[50%] w-[3px] bg-slate-400" />
-      <div className="absolute right-[-60px] top-1/2 h-[3px] w-8 bg-gradient-to-r from-slate-400 to-slate-500" />
-    </div>
-  );
+function BracketPair({ children, tall = false, semi = false }) {
+2
+return (
+3
+<div
+4
+className={classNames(
+5
+'relative',
+6
+semi ? 'space-y-[210px]' : tall ? 'space-y-[88px]' : 'space-y-3'
+7
+)}
+8
+>
+9
+{children}
+10
+ 
+11
+<div className="absolute right-[-22px] top-[25%] h-[2px] w-6 rounded-full bg-slate-400" />
+12
+<div className="absolute right-[-22px] top-[75%] h-[2px] w-6 rounded-full bg-slate-400" />
+13
+<div className="absolute right-[-22px] top-[25%] h-[50%] w-[2px] rounded-full bg-slate-400" />
+14
+<div className="absolute right-[-58px] top-1/2 h-[2px] w-9 rounded-full bg-slate-400" />
+15
+</div>
+16
+);
+17
 }
 
 function MatchBox({

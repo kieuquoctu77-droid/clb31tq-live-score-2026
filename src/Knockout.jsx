@@ -361,14 +361,14 @@ function RoundColumn({ title, color, children }) {
 function BracketPair({ children, tall = false }) {
   return (
     <div className="grid grid-cols-[1fr_24px_24px]">
-      <div className={classNames('flex flex-col', tall ? 'gap-16' : 'gap-2')}>
+      <div className={classNames('flex flex-col', tall ? 'gap-10' : 'gap-2')}>
         {children}
       </div>
 
       <div className="relative">
-        <div className="absolute inset-y-0 right-0 border-r-2 border-slate-400" />
-        <div className="absolute top-[38px] right-0 w-full border-t-2 border-slate-400" />
-        <div className="absolute bottom-[38px] right-0 w-full border-b-2 border-slate-400" />
+        <div className="absolute inset-y-5 right-0 border-r-2 border-slate-400" />
+        <div className="absolute top-8 right-0 w-full border-t-2 border-slate-400" />
+        <div className="absolute bottom-8 right-0 w-full border-b-2 border-slate-400" />
       </div>
 
       <div className="flex items-center">
@@ -393,7 +393,7 @@ function MatchBox({
   return (
     <div
       className={classNames(
-        'rounded-lg border bg-white p-1.5 shadow transition-all',
+        'rounded-lg border bg-white p-1.5 shadow transition-all min-h-[118px]',
         match.winner ? 'border-emerald-400' : 'border-slate-200',
         finalMatch && 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200'
       )}

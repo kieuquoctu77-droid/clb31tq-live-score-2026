@@ -363,10 +363,10 @@ function BracketPair({ children, tall = false }) {
     <div className={classNames('relative', tall ? 'space-y-24' : 'space-y-3')}>
       {children}
 
-      <div className="absolute right-[-30px] top-[25%] h-[3px] w-8 bg-slate-400" />
-      <div className="absolute right-[-30px] top-[75%] h-[3px] w-8 bg-slate-400" />
-      <div className="absolute right-[-30px] top-[25%] h-[50%] w-[3px] bg-slate-400" />
-      <div className="absolute right-[-60px] top-1/2 h-[3px] w-8 bg-slate-400" />
+      <div className="absolute right-[-28px] top-[25%] h-[2px] w-7 rounded-full bg-slate-400" />
+      <div className="absolute right-[-28px] top-[75%] h-[2px] w-7 rounded-full bg-slate-400" />
+      <div className="absolute right-[-28px] top-[25%] h-[50%] w-[2px] rounded-full bg-slate-400" />
+      <div className="absolute right-[-76px] top-1/2 h-[2px] w-12 rounded-full bg-slate-400" />
     </div>
   );
 }

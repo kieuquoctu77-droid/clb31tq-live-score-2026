@@ -69,6 +69,13 @@ function prepareKnockoutData(value) {
   };
 }
 
+function getLoser(match, winner) {
+  if (!match) return '';
+  if (match.p1 === winner) return match.p2 || '';
+  if (match.p2 === winner) return match.p1 || '';
+  return '';
+}
+
 export default function Knockout({
   database = null,
   adminMode = false,
@@ -267,34 +274,35 @@ export default function Knockout({
       </div>
 
       <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-red-100">
-        <div className="min-w-[1280px]">
-          <div className="mb-4 grid grid-cols-[600px_210px_210px_220px] gap-x-7">
+        <div className="min-w-[1080px]">
+          <div className="mb-4 grid grid-cols-[260px_230px_230px_250px] gap-x-8">
             <RoundTitle color="text-red-800">VÒNG 1/8</RoundTitle>
-            <RoundTitle color="text-red-800">TỨ KẾT</RoundTitle>
-            <RoundTitle color="text-red-800">BÁN KẾT</RoundTitle>
-            <RoundTitle color="text-red-800">CHUNG KẾT</RoundTitle>
+            <RoundTitle color="text-blue-800">TỨ KẾT</RoundTitle>
+            <RoundTitle color="text-emerald-800">BÁN KẾT</RoundTitle>
+            <RoundTitle color="text-yellow-700">CHUNG KẾT</RoundTitle>
           </div>
 
           <div
-            className="grid grid-cols-[600px_210px_210px_220px] gap-x-7"
-            style={{ gridTemplateRows: 'repeat(8, 86px)' }}
+            className="grid grid-cols-[260px_230px_230px_250px] gap-x-8"
+            style={{ gridTemplateRows: 'repeat(8, 92px)' }}
           >
             {round16Entries.map(([id, match], index) => (
               <div
                 key={id}
-                className="relative"
+                className="relative flex items-center"
                 style={{
                   gridColumn: 1,
                   gridRow: index + 1,
                 }}
               >
-                <Round16MatchBox
+                <VerticalMatchCard
                   roundKey="round16"
                   matchId={id}
                   match={match}
                   adminMode={adminMode}
                   onWinner={chooseWinner}
                   onUpdatePlayer={updatePlayer}
+                  size="small"
                 />
 
                 <RightConnector />
@@ -312,7 +320,7 @@ export default function Knockout({
               >
                 <LeftMergeConnector />
 
-                <CompactMatchBox
+                <VerticalMatchCard
                   roundKey="quarter"
                   matchId={id}
                   match={match}
@@ -337,7 +345,7 @@ export default function Knockout({
               >
                 <LeftMergeConnector />
 
-                <CompactMatchBox
+                <VerticalMatchCard
                   roundKey="semi"
                   matchId={id}
                   match={match}
@@ -361,7 +369,7 @@ export default function Knockout({
               <LeftMergeConnector />
 
               <div className="w-full">
-                <CompactMatchBox
+                <VerticalMatchCard
                   roundKey="final"
                   matchId="ck"
                   match={data.final.ck}
@@ -389,7 +397,7 @@ export default function Knockout({
 
 function RoundTitle({ children, color }) {
   return (
-    <div className={classNames('text-center text-2xl font-black uppercase tracking-wide', color)}>
+    <div className={classNames('text-center text-xl font-black uppercase tracking-wide', color)}>
       {children}
     </div>
   );
@@ -397,108 +405,75 @@ function RoundTitle({ children, color }) {
 
 function RightConnector() {
   return (
-    <div className="absolute right-[-28px] top-1/2 h-[2px] w-7 bg-slate-400" />
+    <div className="absolute right-[-32px] top-1/2 h-[2px] w-8 bg-slate-400" />
   );
 }
 
 function LeftMergeConnector() {
   return (
     <>
-      <div className="absolute left-[-28px] top-[25%] h-[2px] w-7 bg-slate-300" />
-      <div className="absolute left-[-28px] top-[75%] h-[2px] w-7 bg-slate-300" />
-      <div className="absolute left-[-28px] top-[25%] h-1/2 w-[2px] bg-slate-300" />
-      <div className="absolute left-[-28px] top-1/2 h-[2px] w-7 bg-slate-400" />
+      <div className="absolute left-[-32px] top-[25%] h-[2px] w-8 bg-slate-300" />
+      <div className="absolute left-[-32px] top-[75%] h-[2px] w-8 bg-slate-300" />
+      <div className="absolute left-[-32px] top-[25%] h-1/2 w-[2px] bg-slate-300" />
+      <div className="absolute left-[-32px] top-1/2 h-[2px] w-8 bg-slate-400" />
     </>
   );
 }
 
-function Round16MatchBox({
-  roundKey,
-  matchId,
-  match,
-  adminMode,
-  onWinner,
-  onUpdatePlayer,
-}) {
-  const labelColor =
-    matchId === 't2' || matchId === 't4' || matchId === 't6' || matchId === 't8'
-      ? 'bg-blue-800'
-      : 'bg-red-700';
+function getMatchColor(matchId, color) {
+  if (color === 'blue') return 'bg-blue-700';
+  if (color === 'emerald') return 'bg-emerald-700';
+  if (color === 'yellow') return 'bg-yellow-600';
 
-  return (
-    <div className="grid h-[72px] grid-cols-[52px_1fr_34px_1fr] items-center gap-2">
-      <div
-        className={classNames(
-          'flex h-12 items-center justify-center rounded-xl text-lg font-black text-white shadow-md',
-          labelColor
-        )}
-      >
-        {match.title}
-      </div>
+  if (matchId === 't2' || matchId === 't4' || matchId === 't6' || matchId === 't8') {
+    return 'bg-blue-800';
+  }
 
-      <PlayerBox
-        value={match.p1}
-        selected={match.winner === match.p1}
-        disabled={!String(match.p1 || '').trim() || !adminMode}
-        onClick={() => onWinner(roundKey, matchId, match.p1)}
-        onChange={value => onUpdatePlayer(roundKey, matchId, 'p1', value)}
-        adminMode={adminMode}
-        placeholder="VĐV 1"
-      />
-
-      <div className="text-center text-base font-black text-slate-700">
-        VS
-      </div>
-
-      <PlayerBox
-        value={match.p2}
-        selected={match.winner === match.p2}
-        disabled={!String(match.p2 || '').trim() || !adminMode}
-        onClick={() => onWinner(roundKey, matchId, match.p2)}
-        onChange={value => onUpdatePlayer(roundKey, matchId, 'p2', value)}
-        adminMode={adminMode}
-        placeholder="VĐV 2"
-      />
-    </div>
-  );
+  return 'bg-red-700';
 }
 
-function CompactMatchBox({
+function VerticalMatchCard({
   roundKey,
   matchId,
   match,
   adminMode,
   onWinner,
   onUpdatePlayer,
-  color = 'blue',
+  color = 'red',
   finalMatch = false,
+  size = 'normal',
 }) {
-  const colorClass =
-    color === 'emerald'
-      ? 'bg-emerald-700'
-      : color === 'yellow'
-      ? 'bg-yellow-600'
-      : 'bg-blue-700';
+  const titleColor = getMatchColor(matchId, color);
 
   return (
     <div
       className={classNames(
-        'relative z-10 w-full rounded-2xl border-2 bg-white p-3 text-center shadow-md',
+        'relative z-10 w-full rounded-2xl border-2 bg-white shadow-md transition-all',
+        size === 'small' ? 'p-2' : 'p-3',
         match.winner ? 'border-emerald-400' : 'border-slate-200',
         finalMatch && 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200'
       )}
     >
-      <div
-        className={classNames(
-          'mx-auto mb-3 w-fit rounded-xl px-5 py-1.5 text-xl font-black text-white shadow-sm',
-          colorClass
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div
+          className={classNames(
+            'rounded-xl px-3 py-1 text-sm font-black text-white shadow-sm',
+            titleColor
+          )}
+        >
+          {match.title}
+        </div>
+
+        {match.winner && (
+          <div className="flex items-center gap-1 text-[11px] font-black text-emerald-700">
+            <CheckCircle2 size={13} />
+            Đã chọn
+          </div>
         )}
-      >
-        {match.title}
       </div>
 
-      <div className="space-y-2">
-        <PlayerBox
+      <div className="space-y-1.5">
+        <PlayerRow
           value={match.p1}
           selected={match.winner === match.p1}
           disabled={!String(match.p1 || '').trim() || !adminMode}
@@ -506,10 +481,10 @@ function CompactMatchBox({
           onChange={value => onUpdatePlayer(roundKey, matchId, 'p1', value)}
           adminMode={adminMode}
           placeholder="VĐV 1"
-          compact
+          compact={size === 'small'}
         />
 
-        <PlayerBox
+        <PlayerRow
           value={match.p2}
           selected={match.winner === match.p2}
           disabled={!String(match.p2 || '').trim() || !adminMode}
@@ -517,21 +492,14 @@ function CompactMatchBox({
           onChange={value => onUpdatePlayer(roundKey, matchId, 'p2', value)}
           adminMode={adminMode}
           placeholder="VĐV 2"
-          compact
+          compact={size === 'small'}
         />
       </div>
-
-      {match.winner && (
-        <div className="mt-2 flex items-center justify-center gap-1 text-xs font-black text-emerald-700">
-          <CheckCircle2 size={14} />
-          Đã chọn
-        </div>
-      )}
     </div>
   );
 }
 
-function PlayerBox({
+function PlayerRow({
   value,
   selected,
   disabled,
@@ -544,11 +512,11 @@ function PlayerBox({
   return (
     <div
       className={classNames(
-        'rounded-xl border bg-white transition-all',
-        compact ? 'px-2 py-1.5' : 'px-3 py-2',
+        'rounded-xl border transition-all',
+        compact ? 'px-2 py-1' : 'px-2.5 py-1.5',
         selected
           ? 'border-emerald-700 bg-emerald-600 text-white shadow-md'
-          : 'border-slate-200 text-slate-900 shadow-sm'
+          : 'border-slate-200 bg-white text-slate-900'
       )}
     >
       {adminMode ? (
@@ -559,7 +527,7 @@ function PlayerBox({
             placeholder={placeholder}
             className={classNames(
               'min-w-0 flex-1 bg-transparent font-black outline-none',
-              compact ? 'text-sm' : 'text-base',
+              compact ? 'text-xs' : 'text-sm',
               selected
                 ? 'text-white placeholder:text-emerald-100'
                 : 'text-slate-900 placeholder:text-slate-400'
@@ -571,7 +539,7 @@ function PlayerBox({
             onClick={onClick}
             disabled={disabled}
             className={classNames(
-              'shrink-0 rounded-lg px-2.5 py-1 text-xs font-black',
+              'shrink-0 rounded-lg px-2 py-0.5 text-[11px] font-black',
               selected
                 ? 'bg-white text-emerald-700'
                 : disabled
@@ -583,7 +551,7 @@ function PlayerBox({
           </button>
         </div>
       ) : (
-        <div className={classNames('font-black', compact ? 'text-sm' : 'text-base')}>
+        <div className={classNames('font-black', compact ? 'text-xs' : 'text-sm')}>
           {value || '-'}
         </div>
       )}
@@ -594,9 +562,9 @@ function PlayerBox({
 function ChampionBox({ champion }) {
   if (!champion) {
     return (
-      <div className="mt-5 rounded-2xl border-2 border-dashed border-yellow-300 bg-yellow-50 p-5 text-center">
-        <Trophy className="mx-auto mb-2 text-yellow-500" size={42} />
-        <div className="text-lg font-black text-yellow-700">
+      <div className="mt-4 rounded-2xl border-2 border-dashed border-yellow-300 bg-yellow-50 p-4 text-center">
+        <Trophy className="mx-auto mb-2 text-yellow-500" size={36} />
+        <div className="text-base font-black text-yellow-700">
           Chưa có nhà vô địch
         </div>
       </div>
@@ -604,14 +572,14 @@ function ChampionBox({ champion }) {
   }
 
   return (
-    <div className="mt-5 rounded-2xl bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 p-5 text-center shadow-2xl ring-4 ring-yellow-300">
-      <Trophy className="mx-auto mb-2 text-yellow-900" size={48} />
+    <div className="mt-4 rounded-2xl bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 p-4 text-center shadow-xl ring-4 ring-yellow-300">
+      <Trophy className="mx-auto mb-2 text-yellow-900" size={40} />
 
-      <div className="text-sm font-black uppercase text-yellow-900">
+      <div className="text-xs font-black uppercase text-yellow-900">
         Nhà vô địch
       </div>
 
-      <div className="mt-1 text-2xl font-black text-slate-950">
+      <div className="mt-1 text-xl font-black text-slate-950">
         {champion}
       </div>
     </div>
@@ -620,13 +588,13 @@ function ChampionBox({ champion }) {
 
 function ThirdPlaceBox({ thirdPlace }) {
   return (
-    <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-4">
-      <div className="mb-3 flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-3 py-2 text-center font-black text-white">
-        <Medal size={18} />
+    <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-3">
+      <div className="mb-2 flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-3 py-2 text-center text-sm font-black text-white">
+        <Medal size={16} />
         ĐỒNG HẠNG 3
       </div>
 
-      <div className="space-y-2 text-center text-sm font-black text-slate-800">
+      <div className="space-y-1.5 text-center text-xs font-black text-slate-800">
         <div>
           Thua BK1: {thirdPlace.p1 || '-'}
         </div>
@@ -637,11 +605,4 @@ function ThirdPlaceBox({ thirdPlace }) {
       </div>
     </div>
   );
-}
-
-function getLoser(match, winner) {
-  if (!match) return '';
-  if (match.p1 === winner) return match.p2 || '';
-  if (match.p2 === winner) return match.p1 || '';
-  return '';
 }

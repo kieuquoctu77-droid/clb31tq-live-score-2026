@@ -284,7 +284,7 @@ export default function Knockout({
           </RoundColumn>
 
           <RoundColumn title="TỨ KẾT" color="text-blue-700">
-            <div className="space-y-6 pt-4">
+            <div className="space-y-8 pt-4">
               {quarterPairs.map((pair, pairIndex) => (
                 <BracketPair key={pairIndex} tall>
                   {pair.map(([id, match]) => (
@@ -304,7 +304,7 @@ export default function Knockout({
           </RoundColumn>
 
           <RoundColumn title="BÁN KẾT" color="text-emerald-700">
-            <div className="pt-10">
+            <div className="pt-14">
               <BracketPair tall>
                 {semiEntries.map(([id, match]) => (
                   <MatchBox
@@ -322,7 +322,7 @@ export default function Knockout({
           </RoundColumn>
 
           <RoundColumn title="CHUNG KẾT" color="text-yellow-600">
-            <div className="pt-[60px]">
+            <div className="pt-[95px]">
               <MatchBox
                 roundKey="final"
                 matchId="ck"
@@ -360,13 +360,15 @@ function RoundColumn({ title, color, children }) {
 
 function BracketPair({ children, tall = false }) {
   return (
-    <div className="grid grid-cols-[1fr_18px_14px] items-stretch">
-      <div className={classNames(tall ? 'space-y-10' : 'space-y-2')}>
+    <div className="grid grid-cols-[1fr_24px_24px]">
+      <div className={classNames('flex flex-col', tall ? 'gap-10' : 'gap-2')}>
         {children}
       </div>
 
-      <div className="flex items-center">
-        <div className="h-[calc(100%-34px)] w-full border-y-2 border-r-2 border-slate-400" />
+      <div className="relative">
+        <div className="absolute inset-y-5 right-0 border-r-2 border-slate-400" />
+        <div className="absolute top-8 right-0 w-full border-t-2 border-slate-400" />
+        <div className="absolute bottom-8 right-0 w-full border-b-2 border-slate-400" />
       </div>
 
       <div className="flex items-center">

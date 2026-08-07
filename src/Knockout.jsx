@@ -193,7 +193,30 @@ export default function Knockout({
     }
   };
 
-  const chooseWinner = (roundKey, matchId, winner) => {
-   p2 === winner) return match.p1 || '';
+  function getLoser(match, winner) {
+  if (!match) return '';
+
+  if (match.p1 === winner) {
+    return match.p2 || '';
+  }
+
+  if (match.p2 === winner) {
+    return match.p1 || '';
+  }
+
   return '';
 }
+
+const chooseWinner = (roundKey, matchId, winner) => {
+  if (!adminMode) return;
+  if (!winner) return;
+
+  const next = prepareKnockoutData(cloneData(data));
+  const match = next[roundKey][matchId];
+  const oldWinner = match.winner;
+
+  match.winner = winner;
+
+  pushWinnerForward(next, matchId, winner, oldWinner);
+  saveData(next);
+};

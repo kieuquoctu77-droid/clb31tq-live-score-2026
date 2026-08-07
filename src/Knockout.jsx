@@ -359,37 +359,21 @@ function RoundColumn({ title, color, children }) {
 }
 
 function BracketPair({ children, tall = false, semi = false }) {
-2
-return (
-3
-<div
-4
-className={classNames(
-5
-'relative',
-6
-semi ? 'space-y-[210px]' : tall ? 'space-y-[88px]' : 'space-y-3'
-7
-)}
-8
->
-9
-{children}
-10
- 
-11
-<div className="absolute right-[-22px] top-[25%] h-[2px] w-6 rounded-full bg-slate-400" />
-12
-<div className="absolute right-[-22px] top-[75%] h-[2px] w-6 rounded-full bg-slate-400" />
-13
-<div className="absolute right-[-22px] top-[25%] h-[50%] w-[2px] rounded-full bg-slate-400" />
-14
-<div className="absolute right-[-58px] top-1/2 h-[2px] w-9 rounded-full bg-slate-400" />
-15
-</div>
-16
-);
-17
+  return (
+    <div
+      className={classNames(
+        'relative',
+        semi ? 'space-y-[210px]' : tall ? 'space-y-[88px]' : 'space-y-3'
+      )}
+    >
+      {children}
+
+      <div className="absolute right-[-22px] top-[25%] h-[2px] w-6 rounded-full bg-slate-400" />
+      <div className="absolute right-[-22px] top-[75%] h-[2px] w-6 rounded-full bg-slate-400" />
+      <div className="absolute right-[-22px] top-[25%] h-[50%] w-[2px] rounded-full bg-slate-400" />
+      <div className="absolute right-[-58px] top-1/2 h-[2px] w-9 rounded-full bg-slate-400" />
+    </div>
+  );
 }
 
 function MatchBox({

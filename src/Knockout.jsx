@@ -262,7 +262,7 @@ export default function Knockout({
       </div>
 
       <div className="overflow-x-auto rounded-2xl bg-slate-50 p-3">
-        <div className="grid min-w-[880px] grid-cols-[250px_200px_200px_230px] gap-0">
+        <div className="grid min-w-[980px] grid-cols-[240px_190px_190px_220px] gap-4">
           <RoundColumn title="VÒNG 1/8" color="text-red-700">
             <div className="space-y-5">
               {round16Pairs.map((pair, pairIndex) => (
@@ -304,7 +304,7 @@ export default function Knockout({
           </RoundColumn>
 
           <RoundColumn title="BÁN KẾT" color="text-emerald-700">
-            <div className="pt-12">
+            <div className="pt-20">
               <BracketPair tall>
                 {semiEntries.map(([id, match]) => (
                   <MatchBox
@@ -322,7 +322,7 @@ export default function Knockout({
           </RoundColumn>
 
           <RoundColumn title="CHUNG KẾT" color="text-yellow-600">
-            <div className="pt-[88px]">
+            <div className="pt-[170px]">
               <MatchBox
                 roundKey="final"
                 matchId="ck"
@@ -360,20 +360,13 @@ function RoundColumn({ title, color, children }) {
 
 function BracketPair({ children, tall = false }) {
   return (
-    <div className="grid grid-cols-[1fr_30px_30px]">
-      <div className={classNames('flex flex-col', tall ? 'gap-14' : 'gap-2')}>
-        {children}
-      </div>
+    <div className={classNames('relative', tall ? 'space-y-24' : 'space-y-3')}>
+      {children}
 
-      <div className="relative">
-        <div className="absolute inset-y-0 right-0 border-r-2 border-slate-400" />
-        <div className="absolute top-[48px] right-0 w-full border-t-2 border-slate-400" />
-        <div className="absolute bottom-[48px] right-0 w-full border-b-2 border-slate-400" />
-      </div>
-
-      <div className="flex items-center">
-        <div className="h-[2px] w-full bg-slate-400" />
-      </div>
+      <div className="absolute right-[-30px] top-[25%] h-[3px] w-8 bg-slate-400" />
+      <div className="absolute right-[-30px] top-[75%] h-[3px] w-8 bg-slate-400" />
+      <div className="absolute right-[-30px] top-[25%] h-[50%] w-[3px] bg-slate-400" />
+      <div className="absolute right-[-60px] top-1/2 h-[3px] w-8 bg-slate-400" />
     </div>
   );
 }

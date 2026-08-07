@@ -84,6 +84,8 @@ export default function Knockout({
   const [data, setData] = useState(defaultKnockoutData);
   const [connected, setConnected] = useState(false);
 
+  const ROW_HEIGHT = 140;
+
   useEffect(() => {
     if (!database) {
       const saved = localStorage.getItem('clb31tq-knockout');
@@ -284,7 +286,7 @@ export default function Knockout({
 
           <div
             className="grid grid-cols-[260px_230px_230px_250px] gap-x-8"
-            style={{ gridTemplateRows: 'repeat(8, 92px)' }}
+            style={{ gridTemplateRows: `repeat(8, ${ROW_HEIGHT}px)` }}
           >
             {round16Entries.map(([id, match], index) => (
               <div

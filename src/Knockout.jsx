@@ -267,8 +267,8 @@ export default function Knockout({
       </div>
 
       <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-red-100">
-        <div className="min-w-[1480px]">
-          <div className="mb-3 grid grid-cols-[720px_190px_190px_260px] gap-x-10">
+        <div className="min-w-[1280px]">
+          <div className="mb-4 grid grid-cols-[600px_210px_210px_220px] gap-x-7">
             <RoundTitle color="text-red-800">VÒNG 1/8</RoundTitle>
             <RoundTitle color="text-red-800">TỨ KẾT</RoundTitle>
             <RoundTitle color="text-red-800">BÁN KẾT</RoundTitle>
@@ -276,8 +276,8 @@ export default function Knockout({
           </div>
 
           <div
-            className="grid grid-cols-[720px_190px_190px_260px] gap-x-10"
-            style={{ gridTemplateRows: 'repeat(8, 92px)' }}
+            className="grid grid-cols-[600px_210px_210px_220px] gap-x-7"
+            style={{ gridTemplateRows: 'repeat(8, 86px)' }}
           >
             {round16Entries.map(([id, match], index) => (
               <div
@@ -297,7 +297,7 @@ export default function Knockout({
                   onUpdatePlayer={updatePlayer}
                 />
 
-                <div className="absolute right-[-40px] top-1/2 h-[2px] w-10 bg-slate-400" />
+                <RightConnector />
               </div>
             ))}
 
@@ -322,7 +322,7 @@ export default function Knockout({
                   color="blue"
                 />
 
-                <div className="absolute right-[-40px] top-1/2 h-[2px] w-10 bg-slate-400" />
+                <RightConnector />
               </div>
             ))}
 
@@ -347,7 +347,7 @@ export default function Knockout({
                   color="emerald"
                 />
 
-                <div className="absolute right-[-40px] top-1/2 h-[2px] w-10 bg-slate-400" />
+                <RightConnector />
               </div>
             ))}
 
@@ -389,19 +389,25 @@ export default function Knockout({
 
 function RoundTitle({ children, color }) {
   return (
-    <div className={classNames('text-center text-2xl font-black uppercase', color)}>
+    <div className={classNames('text-center text-2xl font-black uppercase tracking-wide', color)}>
       {children}
     </div>
+  );
+}
+
+function RightConnector() {
+  return (
+    <div className="absolute right-[-28px] top-1/2 h-[2px] w-7 bg-slate-400" />
   );
 }
 
 function LeftMergeConnector() {
   return (
     <>
-      <div className="absolute left-[-40px] top-[25%] h-[2px] w-10 bg-slate-400" />
-      <div className="absolute left-[-40px] top-[75%] h-[2px] w-10 bg-slate-400" />
-      <div className="absolute left-[-40px] top-[25%] h-1/2 w-[2px] bg-slate-400" />
-      <div className="absolute left-[-40px] top-1/2 h-[2px] w-10 bg-slate-400" />
+      <div className="absolute left-[-28px] top-[25%] h-[2px] w-7 bg-slate-300" />
+      <div className="absolute left-[-28px] top-[75%] h-[2px] w-7 bg-slate-300" />
+      <div className="absolute left-[-28px] top-[25%] h-1/2 w-[2px] bg-slate-300" />
+      <div className="absolute left-[-28px] top-1/2 h-[2px] w-7 bg-slate-400" />
     </>
   );
 }
@@ -420,10 +426,10 @@ function Round16MatchBox({
       : 'bg-red-700';
 
   return (
-    <div className="grid h-[78px] grid-cols-[54px_1fr_42px_1fr] items-center gap-2">
+    <div className="grid h-[72px] grid-cols-[52px_1fr_34px_1fr] items-center gap-2">
       <div
         className={classNames(
-          'flex h-12 items-center justify-center rounded-xl text-lg font-black text-white shadow',
+          'flex h-12 items-center justify-center rounded-xl text-lg font-black text-white shadow-md',
           labelColor
         )}
       >
@@ -440,7 +446,7 @@ function Round16MatchBox({
         placeholder="VĐV 1"
       />
 
-      <div className="text-center text-lg font-black text-slate-800">
+      <div className="text-center text-base font-black text-slate-700">
         VS
       </div>
 
@@ -477,14 +483,14 @@ function CompactMatchBox({
   return (
     <div
       className={classNames(
-        'relative z-10 w-full rounded-2xl border-2 bg-white p-3 text-center shadow-lg',
+        'relative z-10 w-full rounded-2xl border-2 bg-white p-3 text-center shadow-md',
         match.winner ? 'border-emerald-400' : 'border-slate-200',
         finalMatch && 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200'
       )}
     >
       <div
         className={classNames(
-          'mx-auto mb-2 w-fit rounded-xl px-4 py-1 text-xl font-black text-white',
+          'mx-auto mb-3 w-fit rounded-xl px-5 py-1.5 text-xl font-black text-white shadow-sm',
           colorClass
         )}
       >
@@ -539,9 +545,9 @@ function PlayerBox({
     <div
       className={classNames(
         'rounded-xl border bg-white transition-all',
-        compact ? 'px-2 py-1' : 'px-3 py-2',
+        compact ? 'px-2 py-1.5' : 'px-3 py-2',
         selected
-          ? 'scale-[1.02] border-emerald-700 bg-emerald-600 text-white shadow-lg'
+          ? 'border-emerald-700 bg-emerald-600 text-white shadow-md'
           : 'border-slate-200 text-slate-900 shadow-sm'
       )}
     >
@@ -553,7 +559,7 @@ function PlayerBox({
             placeholder={placeholder}
             className={classNames(
               'min-w-0 flex-1 bg-transparent font-black outline-none',
-              compact ? 'text-xs' : 'text-base',
+              compact ? 'text-sm' : 'text-base',
               selected
                 ? 'text-white placeholder:text-emerald-100'
                 : 'text-slate-900 placeholder:text-slate-400'
@@ -565,7 +571,7 @@ function PlayerBox({
             onClick={onClick}
             disabled={disabled}
             className={classNames(
-              'shrink-0 rounded-lg px-2 py-1 text-xs font-black',
+              'shrink-0 rounded-lg px-2.5 py-1 text-xs font-black',
               selected
                 ? 'bg-white text-emerald-700'
                 : disabled
@@ -577,7 +583,7 @@ function PlayerBox({
           </button>
         </div>
       ) : (
-        <div className={classNames('font-black', compact ? 'text-xs' : 'text-base')}>
+        <div className={classNames('font-black', compact ? 'text-sm' : 'text-base')}>
           {value || '-'}
         </div>
       )}

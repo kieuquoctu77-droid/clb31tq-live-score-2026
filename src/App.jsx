@@ -775,11 +775,22 @@ export default function App() {
               </select>
 
               <input
-                value={match.customContent || ''}
-                onChange={e => updateMatch(match.id, 'customContent', e.target.value)}
-                placeholder="Nội dung khác nếu cần"
-                className="w-full rounded-xl border border-yellow-300 bg-white px-3 py-3 text-base font-bold text-slate-900 outline-none focus:border-red-500"
-              />
+  defaultValue={match.customContent || ''}
+  onBlur={e =>
+    updateMatch(match.id, 'customContent', e.target.value)
+  }
+  onKeyDown={e => {
+    if (e.key === 'Enter') {
+      updateMatch(
+        match.id,
+        'customContent',
+        e.currentTarget.value
+      );
+    }
+  }}
+  placeholder="Nội dung khác nếu cần"
+  className="w-full rounded-xl border border-yellow-300 bg-white px-3 py-3 text-base font-bold text-slate-900 outline-none focus:border-red-500"
+/>
             </div>
           </div>
         ) : (

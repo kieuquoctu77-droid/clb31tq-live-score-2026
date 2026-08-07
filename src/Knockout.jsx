@@ -284,7 +284,7 @@ export default function Knockout({
           </RoundColumn>
 
           <RoundColumn title="TỨ KẾT" color="text-blue-700">
-            <div className="space-y-10 pt-8">
+            <div className="space-y-12 pt-7">
               {quarterPairs.map((pair, pairIndex) => (
                 <BracketPair key={pairIndex} tall>
                   {pair.map(([id, match]) => (
@@ -304,10 +304,11 @@ export default function Knockout({
           </RoundColumn>
 
           <RoundColumn title="BÁN KẾT" color="text-emerald-700">
-            <div className="space-y-16 pt-20">
-              {semiEntries.map(([id, match]) => (
-                <div key={id} className="relative">
+            <div className="pt-20">
+              <BracketPair tall>
+                {semiEntries.map(([id, match]) => (
                   <MatchBox
+                    key={id}
                     roundKey="semi"
                     matchId={id}
                     match={match}
@@ -315,14 +316,13 @@ export default function Knockout({
                     onWinner={chooseWinner}
                     onUpdatePlayer={updatePlayer}
                   />
-                  <div className="absolute right-[-22px] top-1/2 h-[2px] w-5 bg-gradient-to-r from-slate-300 to-slate-500" />
-                </div>
-              ))}
+                ))}
+              </BracketPair>
             </div>
           </RoundColumn>
 
           <RoundColumn title="CHUNG KẾT" color="text-yellow-600">
-            <div className="pt-[170px]">
+            <div className="pt-[105px]">
               <MatchBox
                 roundKey="final"
                 matchId="ck"
@@ -360,13 +360,18 @@ function RoundColumn({ title, color, children }) {
 
 function BracketPair({ children, tall = false }) {
   return (
-    <div className={classNames('relative', tall ? 'space-y-10' : 'space-y-2')}>
-      {children}
+    <div className="grid grid-cols-[1fr_18px_14px] items-stretch">
+      <div className={classNames(tall ? 'space-y-10' : 'space-y-2')}>
+        {children}
+      </div>
 
-      <div className="absolute right-[-18px] top-[25%] h-[2px] w-5 bg-gradient-to-r from-slate-300 to-slate-500" />
-      <div className="absolute right-[-18px] top-[75%] h-[2px] w-5 bg-gradient-to-r from-slate-300 to-slate-500" />
-      <div className="absolute right-[-18px] top-[25%] h-[50%] w-[2px] bg-slate-400" />
-      <div className="absolute right-[-36px] top-1/2 h-[2px] w-5 bg-gradient-to-r from-slate-400 to-slate-500" />
+      <div className="flex items-center">
+        <div className="h-[calc(100%-34px)] w-full border-y-2 border-r-2 border-slate-400" />
+      </div>
+
+      <div className="flex items-center">
+        <div className="h-[2px] w-full bg-slate-400" />
+      </div>
     </div>
   );
 }

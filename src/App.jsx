@@ -1030,7 +1030,7 @@ export default function App() {
                       : 'border border-slate-300 bg-white text-slate-700'
                   )}
                 >
-                  Knock-out
+                  Knock-out Serie A
                 </button>
               </div>
 
@@ -1042,12 +1042,12 @@ export default function App() {
                       ? 'Chỉ hiển thị 4 bàn cố định. Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp.'
                       : activePage === 'group'
                       ? 'Vòng bảng có thể nhập kết quả theo từng ô đối đầu và tự tính xếp hạng.'
-                      : 'Knock-out có thể chọn người thắng để tự chuyển lên vòng tiếp theo.'
+                      : 'Knock-out Serie Acó thể chọn người thắng để tự chuyển lên vòng tiếp theo.'
                     : activePage === 'live'
                     ? 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'
                     : activePage === 'group'
                     ? 'Đây là trang xem vòng bảng. Kết quả sẽ tự cập nhật realtime.'
-                    : 'Đây là trang xem sơ đồ Knock-out. Kết quả sẽ tự cập nhật realtime.'}
+                    : 'Đây là trang xem sơ đồ Knock-out Ser. Kết quả sẽ tự cập nhật realtime.'}
                 </div>
 
                 {activePage === 'live' && (

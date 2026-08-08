@@ -51,9 +51,12 @@ if (hasFirebaseConfig) {
 
 const DB_PATH = 'clb31tq/live-score/current';
 const PLAYERS_PATH = 'clb31tq/players';
+const GROUP_ASSIGNMENTS_PATH = 'clb31tq/group-stage/assignments';
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '31TQ2026';
 const SETS_TO_WIN = 3;
 const MAX_TABLES = 4;
+const GROUP_TABS = ['A', 'B', 'C', 'D', 'E', 'F'];
+const PLAYERS_PER_GROUP = 4;
 
 const defaultPlayers = ['Anthony', 'Leo', 'Hico', 'Banlan', 'Minh', 'Hung'];
 const ranks = ['A**', 'A1', 'A2', 'B1', 'B2', 'C1'];
@@ -135,13 +138,34 @@ export default function App() {
   const [editingPlayerIndex, setEditingPlayerIndex] = useState(null);
   const [editName, setEditName] = useState('');
   const [editRank, setEditRank] = useState('B1');
+  const [showGroupSetup, setShowGroupSetup] = useState(false);
+  const [groupAssignments, setGroupAssignments] = useState({});
+  const [editingGroupAssignments, setEditingGroupAssignments] = useState({});
   const hydrated = useRef(false);
   const fileInputRef = useRef(null);
 
   const statusOptions = ['Chuẩn bị', 'Đang thi đấu', 'Kết thúc'];
-  const groupTabs = ['A', 'B', 'C', 'D', 'E', 'F'];
-  const activeGroupIndex = groupTabs.indexOf(activeGroup);
-  const activeGroupPlayers = players.slice(activeGroupIndex * 4, activeGroupIndex * 4 + 4);
+  const groupTabs = GROUP_TABS;
+
+  const createEmptyGroupAssignments = () =>
+    groupTabs.reduce((acc, group) => {
+      acc[group] = Array(PLAYERS_PER_GROUP).fill('');
+      return acc;
+    }, {});
+
+  const normalizeGroupAssignments = value => {
+    const base = createEmptyGroupAssignments();
+    if (!value) return base;
+
+    groupTabs.forEach(group => {
+      const rawList = Array.isArray(value[group]) ? value[group] : Object.values(value[group] || {});
+      base[group] = Array.from({ length: PLAYERS_PER_GROUP }, (_, index) => String(rawList[index] || '').trim());
+    });
+
+    return base;
+  };
+
+  const activeGroupPlayers = groupAssignments[activeGroup] || Array(PLAYERS_PER_GROUP).fill('');
 
   const normalizeMatches = matches => {
     const list = (matches || []).slice(0, MAX_TABLES);
@@ -247,6 +271,41 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!database) {
+      const savedAssignments = localStorage.getItem('clb31tq-group-assignments');
+      if (savedAssignments) {
+        try {
+          setGroupAssignments(normalizeGroupAssignments(JSON.parse(savedAssignments)));
+        } catch {
+          setGroupAssignments(createEmptyGroupAssignments());
+        }
+      } else {
+        setGroupAssignments(createEmptyGroupAssignments());
+      }
+      return;
+    }
+
+    const assignmentsRef = ref(database, GROUP_ASSIGNMENTS_PATH);
+    const unsubscribe = onValue(
+      assignmentsRef,
+      snapshot => {
+        setGroupAssignments(normalizeGroupAssignments(snapshot.val()));
+      },
+      () => {
+        setGroupAssignments(createEmptyGroupAssignments());
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (showGroupSetup) {
+      setEditingGroupAssignments(normalizeGroupAssignments(groupAssignments));
+    }
+  }, [showGroupSetup, groupAssignments]);
+
+  useEffect(() => {
     if (showPlayerManager) {
       setEditingPlayers(players);
     }
@@ -299,6 +358,43 @@ export default function App() {
 
     setPlayers(cleanedPlayers);
     return cleanedPlayers;
+  };
+
+  const saveGroupAssignments = async nextAssignments => {
+    const payload = normalizeGroupAssignments(nextAssignments);
+    setGroupAssignments(payload);
+
+    if (database) {
+      await set(ref(database, GROUP_ASSIGNMENTS_PATH), payload);
+    } else {
+      localStorage.setItem('clb31tq-group-assignments', JSON.stringify(payload));
+    }
+
+    return payload;
+  };
+
+  const updateEditingGroupPlayer = (group, slotIndex, value) => {
+    setEditingGroupAssignments(prev => {
+      const next = normalizeGroupAssignments(prev);
+      next[group] = [...next[group]];
+      next[group][slotIndex] = value;
+      return next;
+    });
+  };
+
+  const saveGroupSetup = async () => {
+    const payload = normalizeGroupAssignments(editingGroupAssignments);
+    const selectedPlayers = Object.values(payload).flat().filter(Boolean);
+    const duplicatePlayer = selectedPlayers.find((name, index, arr) => arr.indexOf(name) !== index);
+
+    if (duplicatePlayer) {
+      window.alert(`VĐV "${duplicatePlayer}" đang bị chọn trùng giữa các bảng. Anh kiểm tra lại giúp em.`);
+      return;
+    }
+
+    await saveGroupAssignments(payload);
+    setShowGroupSetup(false);
+    window.alert(`Đã lưu danh sách VĐV Bảng ${activeGroup}.`);
   };
 
   const getPlayerNameFromRow = row => {
@@ -692,6 +788,89 @@ export default function App() {
     </div>
   );
 
+  const GroupSetupPanel = () => {
+    const currentAssignments = normalizeGroupAssignments(editingGroupAssignments);
+    const currentGroupPlayers = currentAssignments[activeGroup] || Array(PLAYERS_PER_GROUP).fill('');
+    const selectedInOtherGroups = Object.entries(currentAssignments)
+      .filter(([group]) => group !== activeGroup)
+      .flatMap(([, groupPlayers]) => groupPlayers)
+      .filter(Boolean);
+
+    const getDropdownOptions = slotIndex => {
+      const currentValue = currentGroupPlayers[slotIndex];
+      const selectedInCurrentGroup = currentGroupPlayers.filter((name, index) => name && index !== slotIndex);
+
+      return [currentValue, ...players]
+        .filter(Boolean)
+        .filter((name, index, arr) => arr.indexOf(name) === index)
+        .filter(name => name === currentValue || (!selectedInOtherGroups.includes(name) && !selectedInCurrentGroup.includes(name)));
+    };
+
+    const filledSlots = currentGroupPlayers.filter(Boolean).length;
+
+    return (
+      <div className="rounded-3xl border border-blue-200 bg-blue-50 p-4 shadow-inner">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-xl font-black text-blue-900">Thiết lập VĐV Bảng {activeGroup}</div>
+            <div className="text-sm font-semibold text-slate-600">
+              Sau khi bốc thăm thủ công, chọn nhanh 4 VĐV bằng dropdown rồi bấm Lưu. App sẽ dùng danh sách này cho vòng bảng.
+            </div>
+          </div>
+          <div className="rounded-xl bg-white px-3 py-2 text-sm font-black text-blue-800 shadow-sm">
+            Đã chọn {filledSlots}/{PLAYERS_PER_GROUP}
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: PLAYERS_PER_GROUP }, (_, index) => (
+            <div key={index} className="rounded-2xl bg-white p-3 shadow-sm">
+              <label className="mb-1 block text-sm font-black text-slate-700">VĐV {index + 1}</label>
+              <select
+                value={currentGroupPlayers[index] || ''}
+                onChange={e => updateEditingGroupPlayer(activeGroup, index, e.target.value)}
+                className="w-full rounded-xl border border-blue-200 bg-white px-3 py-3 text-base font-bold text-slate-900 outline-none focus:border-blue-600"
+              >
+                <option value="">Chọn VĐV</option>
+                {getDropdownOptions(index).map(name => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-600">
+          Ghi chú: VĐV đã được chọn ở bảng khác sẽ tự ẩn khỏi dropdown để tránh trùng người. Nếu cần đổi bảng, bỏ chọn VĐV ở bảng cũ trước.
+        </div>
+
+        <div className="mt-4 flex flex-wrap justify-end gap-2">
+          <button
+            onClick={() => setEditingGroupAssignments(normalizeGroupAssignments(groupAssignments))}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold text-slate-700"
+          >
+            Hoàn tác
+          </button>
+          <button
+            onClick={() => setShowGroupSetup(false)}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold text-slate-700"
+          >
+            Đóng
+          </button>
+          <button
+            onClick={saveGroupSetup}
+            className="flex items-center gap-2 rounded-xl bg-blue-700 px-5 py-3 font-bold text-white hover:bg-blue-800"
+          >
+            <Save size={16} />
+            Lưu Bảng {activeGroup}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const MatchCard = ({ match }) => {
     const leaderA = Number(match.scoreA) > Number(match.scoreB);
     const leaderB = Number(match.scoreB) > Number(match.scoreA);
@@ -1030,7 +1209,7 @@ export default function App() {
                       : 'border border-slate-300 bg-white text-slate-700'
                   )}
                 >
-                  Knock-out Serie A
+                  Knock Out Serie A
                 </button>
 
                 <button
@@ -1042,7 +1221,7 @@ export default function App() {
                       : 'border border-slate-300 bg-white text-slate-700'
                   )}
                 >
-                  Knock-out Serie B
+                  Knock Out Serie B
                 </button>
               </div>
 
@@ -1053,17 +1232,17 @@ export default function App() {
                     ? activePage === 'live'
                       ? 'Chỉ hiển thị 4 bàn cố định. Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp.'
                       : activePage === 'group'
-                      ? 'Vòng bảng có thể nhập kết quả theo từng ô đối đầu và tự tính xếp hạng.'
+                      ? 'Vòng bảng có thể chọn VĐV bằng dropdown sau khi bốc thăm, nhập kết quả theo từng ô đối đầu và tự tính xếp hạng.'
                       : activePage === 'knockout'
-                      ? 'Knock-out Serie A có thể chọn người thắng để tự chuyển lên vòng tiếp theo.'
-                      : 'Knock-out Serie B có thể chọn người thắng để tự chuyển lên vòng tiếp theo.'
+                      ? 'Knock Out Serie A có thể chọn người thắng để tự chuyển lên vòng tiếp theo.'
+                      : 'Knock Out Serie B có thể chọn người thắng để tự chuyển lên vòng tiếp theo.'
                     : activePage === 'live'
                     ? 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'
                     : activePage === 'group'
-                    ? 'Đây là trang xem vòng bảng. Kết quả sẽ tự cập nhật realtime.'
+                    ? 'Đây là trang xem vòng bảng. Danh sách VĐV và kết quả sẽ tự cập nhật realtime.'
                     : activePage === 'knockout'
-                    ? 'Đây là trang xem sơ đồ Knock-out Serie A. Kết quả sẽ tự cập nhật realtime.'
-                    : 'Đây là trang xem sơ đồ Knock-out Serie B. Kết quả sẽ tự cập nhật realtime.'}
+                    ? 'Đây là trang xem sơ đồ Knock Out Serie A. Kết quả sẽ tự cập nhật realtime.'
+                    : 'Đây là trang xem sơ đồ Knock Out Serie B. Kết quả sẽ tự cập nhật realtime.'}
                 </div>
 
                 {activePage === 'live' && (
@@ -1086,24 +1265,39 @@ export default function App() {
           </div>
         ) : activePage === 'group' ? (
           <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {groupTabs.map(group => (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap gap-2">
+                {groupTabs.map(group => (
+                  <button
+                    key={group}
+                    onClick={() => setActiveGroup(group)}
+                    className={classNames(
+                      'rounded-xl px-4 py-2 font-bold',
+                      activeGroup === group
+                        ? 'bg-blue-700 text-white'
+                        : 'border border-slate-300 bg-white text-slate-700'
+                    )}
+                  >
+                    Bảng {group}
+                  </button>
+                ))}
+              </div>
+              {adminMode && !tvMode && (
                 <button
-                  key={group}
-                  onClick={() => setActiveGroup(group)}
-                  className={classNames(
-                    'rounded-xl px-4 py-2 font-bold',
-                    activeGroup === group
-                      ? 'bg-blue-700 text-white'
-                      : 'border border-slate-300 bg-white text-slate-700'
-                  )}
+                  onClick={() => {
+                    setEditingGroupAssignments(normalizeGroupAssignments(groupAssignments));
+                    setShowGroupSetup(!showGroupSetup);
+                  }}
+                  className="rounded-xl bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-800"
                 >
-                  Bảng {group}
+                  Thiết lập VĐV Bảng {activeGroup}
                 </button>
-              ))}
+              )}
             </div>
+            {adminMode && !tvMode && showGroupSetup && <GroupSetupPanel />}
 
             <GroupStage
+              key={activeGroup}
               database={database}
               adminMode={adminMode}
               dbPath={`clb31tq/group-stage/group${activeGroup}`}
@@ -1132,7 +1326,7 @@ export default function App() {
 
         <div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
           <div className="flex items-center justify-center gap-2">
-            <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định và có thêm trang vòng bảng, Knock-out Serie A và Knock-out Serie B.
+            <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định và có thêm trang vòng bảng, Knock Out Serie A và Knock Out Serie B.
           </div>
         </div>
       </div>

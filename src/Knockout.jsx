@@ -1,37 +1,63 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { RotateCcw, Trophy, Medal, CheckCircle2 } from 'lucide-react';
 import { onValue, ref, set } from 'firebase/database';
 
-const defaultKnockoutData = {
-  round16: {
-    t1: { title: 'T1', p1: 'N bốc thăm 1 - Nhất bảng', p2: 'H3 bốc thăm 1 - Hạng ba', winner: '' },
-    t2: { title: 'T2', p1: 'Nhì bảng A', p2: 'Nhì bảng D', winner: '' },
-    t3: { title: 'T3', p1: 'N bốc thăm 2 - Nhất bảng', p2: 'H3 bốc thăm 2 - Hạng ba', winner: '' },
-    t4: { title: 'T4', p1: 'Nhì bảng B', p2: 'Nhì bảng C', winner: '' },
-    t5: { title: 'T5', p1: 'N bốc thăm 3 - Nhất bảng', p2: 'H3 bốc thăm 3 - Hạng ba', winner: '' },
-    t6: { title: 'T6', p1: 'N còn lại 1 - Nhất bảng', p2: 'Nhì bảng E', winner: '' },
-    t7: { title: 'T7', p1: 'N bốc thăm 4 - Nhất bảng', p2: 'H3 bốc thăm 4 - Hạng ba', winner: '' },
-    t8: { title: 'T8', p1: 'N còn lại 2 - Nhất bảng', p2: 'Nhì bảng F', winner: '' },
-  },
-  quarter: {
-    tk1: { title: 'TK1', p1: '', p2: '', winner: '' },
-    tk2: { title: 'TK2', p1: '', p2: '', winner: '' },
-    tk3: { title: 'TK3', p1: '', p2: '', winner: '' },
-    tk4: { title: 'TK4', p1: '', p2: '', winner: '' },
-  },
-  semi: {
-    bk1: { title: 'BK1', p1: '', p2: '', winner: '' },
-    bk2: { title: 'BK2', p1: '', p2: '', winner: '' },
-  },
-  final: {
-    ck: { title: 'CHUNG KẾT', p1: '', p2: '', winner: '' },
-  },
-  thirdPlace: {
-    p1: '',
-    p2: '',
-  },
-  champion: '',
-};
+function createDefaultKnockoutData(bracketSize = 16) {
+  if (Number(bracketSize) === 8) {
+    return {
+      round16: {},
+      quarter: {
+        tk1: { title: 'T1', p1: 'H3 còn lại 1', p2: 'Tư bảng A', winner: '' },
+        tk2: { title: 'T2', p1: 'H3 còn lại 2', p2: 'Tư bảng B', winner: '' },
+        tk3: { title: 'T3', p1: 'Tư bảng C', p2: 'Tư bảng D', winner: '' },
+        tk4: { title: 'T4', p1: 'Tư bảng E', p2: 'Tư bảng F', winner: '' },
+      },
+      semi: {
+        bk1: { title: 'BK1', p1: '', p2: '', winner: '' },
+        bk2: { title: 'BK2', p1: '', p2: '', winner: '' },
+      },
+      final: {
+        ck: { title: 'CHUNG KẾT', p1: '', p2: '', winner: '' },
+      },
+      thirdPlace: {
+        p1: '',
+        p2: '',
+      },
+      champion: '',
+    };
+  }
+
+  return {
+    round16: {
+      t1: { title: 'T1', p1: 'N bốc thăm 1 - Nhất bảng', p2: 'H3 bốc thăm 1 - Hạng ba', winner: '' },
+      t2: { title: 'T2', p1: 'Nhì bảng A', p2: 'Nhì bảng D', winner: '' },
+      t3: { title: 'T3', p1: 'N bốc thăm 2 - Nhất bảng', p2: 'H3 bốc thăm 2 - Hạng ba', winner: '' },
+      t4: { title: 'T4', p1: 'Nhì bảng B', p2: 'Nhì bảng C', winner: '' },
+      t5: { title: 'T5', p1: 'N bốc thăm 3 - Nhất bảng', p2: 'H3 bốc thăm 3 - Hạng ba', winner: '' },
+      t6: { title: 'T6', p1: 'N còn lại 1 - Nhất bảng', p2: 'Nhì bảng E', winner: '' },
+      t7: { title: 'T7', p1: 'N bốc thăm 4 - Nhất bảng', p2: 'H3 bốc thăm 4 - Hạng ba', winner: '' },
+      t8: { title: 'T8', p1: 'N còn lại 2 - Nhất bảng', p2: 'Nhì bảng F', winner: '' },
+    },
+    quarter: {
+      tk1: { title: 'TK1', p1: '', p2: '', winner: '' },
+      tk2: { title: 'TK2', p1: '', p2: '', winner: '' },
+      tk3: { title: 'TK3', p1: '', p2: '', winner: '' },
+      tk4: { title: 'TK4', p1: '', p2: '', winner: '' },
+    },
+    semi: {
+      bk1: { title: 'BK1', p1: '', p2: '', winner: '' },
+      bk2: { title: 'BK2', p1: '', p2: '', winner: '' },
+    },
+    final: {
+      ck: { title: 'CHUNG KẾT', p1: '', p2: '', winner: '' },
+    },
+    thirdPlace: {
+      p1: '',
+      p2: '',
+    },
+    champion: '',
+  };
+}
 
 function classNames(...items) {
   return items.filter(Boolean).join(' ');
@@ -41,28 +67,29 @@ function cloneData(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function prepareKnockoutData(value) {
+function prepareKnockoutData(value, bracketSize = 16) {
+  const defaultData = createDefaultKnockoutData(bracketSize);
   return {
-    ...defaultKnockoutData,
+    ...defaultData,
     ...(value || {}),
     round16: {
-      ...defaultKnockoutData.round16,
+      ...defaultData.round16,
       ...(value?.round16 || {}),
     },
     quarter: {
-      ...defaultKnockoutData.quarter,
+      ...defaultData.quarter,
       ...(value?.quarter || {}),
     },
     semi: {
-      ...defaultKnockoutData.semi,
+      ...defaultData.semi,
       ...(value?.semi || {}),
     },
     final: {
-      ...defaultKnockoutData.final,
+      ...defaultData.final,
       ...(value?.final || {}),
     },
     thirdPlace: {
-      ...defaultKnockoutData.thirdPlace,
+      ...defaultData.thirdPlace,
       ...(value?.thirdPlace || {}),
     },
     champion: value?.champion || '',
@@ -80,42 +107,48 @@ export default function Knockout({
   database = null,
   adminMode = false,
   dbPath = 'clb31tq/knockout/serieA16',
+  title = 'SERIE A',
+  bracketSize = 16,
 }) {
-  const [data, setData] = useState(defaultKnockoutData);
+  const normalizedBracketSize = Number(bracketSize) === 8 ? 8 : 16;
+  const defaultData = useMemo(() => createDefaultKnockoutData(normalizedBracketSize), [normalizedBracketSize]);
+  const storageKey = useMemo(() => `clb31tq-knockout-${dbPath}`, [dbPath]);
+  const [data, setData] = useState(defaultData);
   const [connected, setConnected] = useState(false);
+  const ROW_HEIGHT_16 = 140;
+  const ROW_HEIGHT_8 = 150;
 
-  const ROW_HEIGHT = 140;
+  useEffect(() => {
+    setData(defaultData);
+  }, [defaultData]);
 
   useEffect(() => {
     if (!database) {
-      const saved = localStorage.getItem('clb31tq-knockout');
-
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         try {
-          setData(prepareKnockoutData(JSON.parse(saved)));
+          setData(prepareKnockoutData(JSON.parse(saved), normalizedBracketSize));
         } catch {
-          setData(defaultKnockoutData);
+          setData(defaultData);
         }
+      } else {
+        setData(defaultData);
       }
-
       setConnected(false);
       return;
     }
 
     const knockoutRef = ref(database, dbPath);
-
     const unsubscribe = onValue(
       knockoutRef,
       snapshot => {
         const value = snapshot.val();
-
         if (value) {
-          setData(prepareKnockoutData(value));
+          setData(prepareKnockoutData(value, normalizedBracketSize));
         } else {
-          set(knockoutRef, defaultKnockoutData);
-          setData(defaultKnockoutData);
+          set(knockoutRef, defaultData);
+          setData(defaultData);
         }
-
         setConnected(true);
       },
       () => {
@@ -124,16 +157,15 @@ export default function Knockout({
     );
 
     return () => unsubscribe();
-  }, [database, dbPath]);
+  }, [database, dbPath, storageKey, normalizedBracketSize, defaultData]);
 
   const saveData = async nextData => {
-    const payload = prepareKnockoutData(nextData);
+    const payload = prepareKnockoutData(nextData, normalizedBracketSize);
     setData(payload);
-
     if (database) {
       await set(ref(database, dbPath), payload);
     } else {
-      localStorage.setItem('clb31tq-knockout', JSON.stringify(payload));
+      localStorage.setItem(storageKey, JSON.stringify(payload));
     }
   };
 
@@ -142,7 +174,6 @@ export default function Knockout({
 
     Object.keys(next.quarter).forEach(key => {
       const match = next.quarter[key];
-
       if (match.p1 === oldWinner) match.p1 = '';
       if (match.p2 === oldWinner) match.p2 = '';
       if (match.winner === oldWinner) match.winner = '';
@@ -150,7 +181,6 @@ export default function Knockout({
 
     Object.keys(next.semi).forEach(key => {
       const match = next.semi[key];
-
       if (match.p1 === oldWinner) match.p1 = '';
       if (match.p2 === oldWinner) match.p2 = '';
       if (match.winner === oldWinner) match.winner = '';
@@ -159,10 +189,8 @@ export default function Knockout({
     if (next.final.ck.p1 === oldWinner) next.final.ck.p1 = '';
     if (next.final.ck.p2 === oldWinner) next.final.ck.p2 = '';
     if (next.final.ck.winner === oldWinner) next.final.ck.winner = '';
-
     if (next.thirdPlace.p1 === oldWinner) next.thirdPlace.p1 = '';
     if (next.thirdPlace.p2 === oldWinner) next.thirdPlace.p2 = '';
-
     if (next.champion === oldWinner) next.champion = '';
   };
 
@@ -171,19 +199,15 @@ export default function Knockout({
 
     if (matchId === 't1') next.quarter.tk1.p1 = winner;
     if (matchId === 't2') next.quarter.tk1.p2 = winner;
-
     if (matchId === 't3') next.quarter.tk2.p1 = winner;
     if (matchId === 't4') next.quarter.tk2.p2 = winner;
-
     if (matchId === 't5') next.quarter.tk3.p1 = winner;
     if (matchId === 't6') next.quarter.tk3.p2 = winner;
-
     if (matchId === 't7') next.quarter.tk4.p1 = winner;
     if (matchId === 't8') next.quarter.tk4.p2 = winner;
 
     if (matchId === 'tk1') next.semi.bk1.p1 = winner;
     if (matchId === 'tk2') next.semi.bk1.p2 = winner;
-
     if (matchId === 'tk3') next.semi.bk2.p1 = winner;
     if (matchId === 'tk4') next.semi.bk2.p2 = winner;
 
@@ -206,28 +230,25 @@ export default function Knockout({
     if (!adminMode) return;
     if (!winner) return;
 
-    const next = prepareKnockoutData(cloneData(data));
+    const next = prepareKnockoutData(cloneData(data), normalizedBracketSize);
     const match = next[roundKey][matchId];
     const oldWinner = match.winner;
-
     match.winner = winner;
     pushWinnerForward(next, matchId, winner, oldWinner);
-
     await saveData(next);
   };
 
   const updatePlayer = async (roundKey, matchId, playerKey, value) => {
     if (!adminMode) return;
 
-    const next = prepareKnockoutData(cloneData(data));
-    next[roundKey][matchId][playerKey] = value;
+    const next = prepareKnockoutData(cloneData(data), normalizedBracketSize);
+    const match = next[roundKey][matchId];
+    const oldWinner = match.winner;
+    match[playerKey] = value;
 
-    if (
-      next[roundKey][matchId].winner &&
-      next[roundKey][matchId].winner !== next[roundKey][matchId].p1 &&
-      next[roundKey][matchId].winner !== next[roundKey][matchId].p2
-    ) {
-      next[roundKey][matchId].winner = '';
+    if (match.winner && match.winner !== match.p1 && match.winner !== match.p2) {
+      match.winner = '';
+      clearDownstreamIfNeeded(next, oldWinner);
     }
 
     await saveData(next);
@@ -235,11 +256,9 @@ export default function Knockout({
 
   const resetKnockout = async () => {
     if (!adminMode) return;
-
-    const confirmReset = window.confirm('Reset toàn bộ sơ đồ Knock-out?');
+    const confirmReset = window.confirm(`Reset toàn bộ sơ đồ Knock-out ${title}?`);
     if (!confirmReset) return;
-
-    await saveData(defaultKnockoutData);
+    await saveData(defaultData);
   };
 
   const round16Entries = Object.entries(data.round16);
@@ -251,13 +270,11 @@ export default function Knockout({
       <div className="mb-5 flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="text-2xl font-black text-red-700 sm:text-3xl">
-            🏓 SƠ ĐỒ KNOCK-OUT SERIE A - 16 VĐV
+            🏓 SƠ ĐỒ KNOCK OUT {title} - {normalizedBracketSize} VĐV
           </div>
-
           <div className="mt-1 text-sm font-bold text-slate-500">
             Bấm “Thắng” để tự động đẩy VĐV lên nhánh tiếp theo.
           </div>
-
           <div className="mt-1 text-xs font-bold text-slate-400">
             Trạng thái: {connected ? 'Realtime Firebase' : 'Local'}
           </div>
@@ -275,123 +292,206 @@ export default function Knockout({
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-red-100">
-        <div className="min-w-[1080px]">
-          <div className="mb-4 grid grid-cols-[260px_230px_230px_250px] gap-x-8">
-            <RoundTitle color="text-red-800">VÒNG 1/8</RoundTitle>
-            <RoundTitle color="text-blue-800">TỨ KẾT</RoundTitle>
-            <RoundTitle color="text-emerald-800">BÁN KẾT</RoundTitle>
-            <RoundTitle color="text-yellow-700">CHUNG KẾT</RoundTitle>
-          </div>
+      {normalizedBracketSize === 8 ? (
+        <SerieBBracket
+          data={data}
+          quarterEntries={quarterEntries}
+          semiEntries={semiEntries}
+          rowHeight={ROW_HEIGHT_8}
+          adminMode={adminMode}
+          chooseWinner={chooseWinner}
+          updatePlayer={updatePlayer}
+        />
+      ) : (
+        <SerieABracket
+          data={data}
+          round16Entries={round16Entries}
+          quarterEntries={quarterEntries}
+          semiEntries={semiEntries}
+          rowHeight={ROW_HEIGHT_16}
+          adminMode={adminMode}
+          chooseWinner={chooseWinner}
+          updatePlayer={updatePlayer}
+        />
+      )}
 
-          <div
-            className="grid grid-cols-[260px_230px_230px_250px] gap-x-8"
-            style={{ gridTemplateRows: `repeat(8, ${ROW_HEIGHT}px)` }}
-          >
-            {round16Entries.map(([id, match], index) => (
-              <div
-                key={id}
-                className="relative flex items-center"
-                style={{
-                  gridColumn: 1,
-                  gridRow: index + 1,
-                }}
-              >
-                <VerticalMatchCard
-                  roundKey="round16"
-                  matchId={id}
-                  match={match}
-                  adminMode={adminMode}
-                  onWinner={chooseWinner}
-                  onUpdatePlayer={updatePlayer}
-                  size="small"
-                />
+      <div className="mt-5 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
+        {normalizedBracketSize === 8
+          ? 'Ghi chú Serie B: gồm 2 VĐV hạng 3 còn lại và 6 VĐV hạng tư bảng A đến F. Thua BK1 và thua BK2 đồng hạng 3.'
+          : 'Ghi chú Serie A: N = VĐV nhất bảng theo thứ tự bốc thăm. H3 = VĐV hạng ba xuất sắc theo thứ tự bốc thăm.'}
+      </div>
+    </div>
+  );
+}
 
-                <RightConnector />
-              </div>
-            ))}
+function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer }) {
+  return (
+    <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-red-100">
+      <div className="min-w-[1080px]">
+        <div className="mb-4 grid grid-cols-[260px_230px_230px_250px] gap-x-8">
+          <RoundTitle color="text-red-800">VÒNG 1/8</RoundTitle>
+          <RoundTitle color="text-blue-800">TỨ KẾT</RoundTitle>
+          <RoundTitle color="text-emerald-800">BÁN KẾT</RoundTitle>
+          <RoundTitle color="text-yellow-700">CHUNG KẾT</RoundTitle>
+        </div>
 
-            {quarterEntries.map(([id, match], index) => (
-              <div
-                key={id}
-                className="relative flex items-center"
-                style={{
-                  gridColumn: 2,
-                  gridRow: `${index * 2 + 1} / span 2`,
-                }}
-              >
-                <LeftMergeConnector />
-
-                <VerticalMatchCard
-                  roundKey="quarter"
-                  matchId={id}
-                  match={match}
-                  adminMode={adminMode}
-                  onWinner={chooseWinner}
-                  onUpdatePlayer={updatePlayer}
-                  color="blue"
-                />
-
-                <RightConnector />
-              </div>
-            ))}
-
-            {semiEntries.map(([id, match], index) => (
-              <div
-                key={id}
-                className="relative flex items-center"
-                style={{
-                  gridColumn: 3,
-                  gridRow: `${index * 4 + 1} / span 4`,
-                }}
-              >
-                <LeftMergeConnector />
-
-                <VerticalMatchCard
-                  roundKey="semi"
-                  matchId={id}
-                  match={match}
-                  adminMode={adminMode}
-                  onWinner={chooseWinner}
-                  onUpdatePlayer={updatePlayer}
-                  color="emerald"
-                />
-
-                <RightConnector />
-              </div>
-            ))}
-
+        <div
+          className="grid grid-cols-[260px_230px_230px_250px] gap-x-8"
+          style={{ gridTemplateRows: `repeat(8, ${rowHeight}px)` }}
+        >
+          {round16Entries.map(([id, match], index) => (
             <div
+              key={id}
               className="relative flex items-center"
-              style={{
-                gridColumn: 4,
-                gridRow: '1 / span 8',
-              }}
+              style={{ gridColumn: 1, gridRow: index + 1 }}
+            >
+              <VerticalMatchCard
+                roundKey="round16"
+                matchId={id}
+                match={match}
+                adminMode={adminMode}
+                onWinner={chooseWinner}
+                onUpdatePlayer={updatePlayer}
+                size="small"
+              />
+              <RightConnector />
+            </div>
+          ))}
+
+          {quarterEntries.map(([id, match], index) => (
+            <div
+              key={id}
+              className="relative flex items-center"
+              style={{ gridColumn: 2, gridRow: `${index * 2 + 1} / span 2` }}
             >
               <LeftMergeConnector />
+              <VerticalMatchCard
+                roundKey="quarter"
+                matchId={id}
+                match={match}
+                adminMode={adminMode}
+                onWinner={chooseWinner}
+                onUpdatePlayer={updatePlayer}
+                color="blue"
+              />
+              <RightConnector />
+            </div>
+          ))}
 
-              <div className="w-full">
-                <VerticalMatchCard
-                  roundKey="final"
-                  matchId="ck"
-                  match={data.final.ck}
-                  adminMode={adminMode}
-                  onWinner={chooseWinner}
-                  onUpdatePlayer={updatePlayer}
-                  color="yellow"
-                  finalMatch
-                />
+          {semiEntries.map(([id, match], index) => (
+            <div
+              key={id}
+              className="relative flex items-center"
+              style={{ gridColumn: 3, gridRow: `${index * 4 + 1} / span 4` }}
+            >
+              <LeftMergeConnector />
+              <VerticalMatchCard
+                roundKey="semi"
+                matchId={id}
+                match={match}
+                adminMode={adminMode}
+                onWinner={chooseWinner}
+                onUpdatePlayer={updatePlayer}
+                color="emerald"
+              />
+              <RightConnector />
+            </div>
+          ))}
 
-                <ChampionBox champion={data.champion} />
-                <ThirdPlaceBox thirdPlace={data.thirdPlace} />
-              </div>
+          <div className="relative flex items-center" style={{ gridColumn: 4, gridRow: '1 / span 8' }}>
+            <LeftMergeConnector />
+            <div className="w-full">
+              <VerticalMatchCard
+                roundKey="final"
+                matchId="ck"
+                match={data.final.ck}
+                adminMode={adminMode}
+                onWinner={chooseWinner}
+                onUpdatePlayer={updatePlayer}
+                color="yellow"
+                finalMatch
+              />
+              <ChampionBox champion={data.champion} />
+              <ThirdPlaceBox thirdPlace={data.thirdPlace} />
             </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="mt-5 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
-        Ghi chú: N = VĐV nhất bảng theo thứ tự bốc thăm. H3 = VĐV hạng ba xuất sắc theo thứ tự bốc thăm.
+function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer }) {
+  return (
+    <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-emerald-100">
+      <div className="min-w-[820px]">
+        <div className="mb-4 grid grid-cols-[260px_230px_250px] gap-x-8">
+          <RoundTitle color="text-emerald-800">TỨ KẾT</RoundTitle>
+          <RoundTitle color="text-emerald-800">BÁN KẾT</RoundTitle>
+          <RoundTitle color="text-yellow-700">CHUNG KẾT</RoundTitle>
+        </div>
+
+        <div
+          className="grid grid-cols-[260px_230px_250px] gap-x-8"
+          style={{ gridTemplateRows: `repeat(4, ${rowHeight}px)` }}
+        >
+          {quarterEntries.map(([id, match], index) => (
+            <div
+              key={id}
+              className="relative flex items-center"
+              style={{ gridColumn: 1, gridRow: index + 1 }}
+            >
+              <VerticalMatchCard
+                roundKey="quarter"
+                matchId={id}
+                match={match}
+                adminMode={adminMode}
+                onWinner={chooseWinner}
+                onUpdatePlayer={updatePlayer}
+                color="green"
+              />
+              <RightConnector />
+            </div>
+          ))}
+
+          {semiEntries.map(([id, match], index) => (
+            <div
+              key={id}
+              className="relative flex items-center"
+              style={{ gridColumn: 2, gridRow: `${index * 2 + 1} / span 2` }}
+            >
+              <LeftMergeConnector />
+              <VerticalMatchCard
+                roundKey="semi"
+                matchId={id}
+                match={match}
+                adminMode={adminMode}
+                onWinner={chooseWinner}
+                onUpdatePlayer={updatePlayer}
+                color="emerald"
+              />
+              <RightConnector />
+            </div>
+          ))}
+
+          <div className="relative flex items-center" style={{ gridColumn: 3, gridRow: '1 / span 4' }}>
+            <LeftMergeConnector />
+            <div className="w-full">
+              <VerticalMatchCard
+                roundKey="final"
+                matchId="ck"
+                match={data.final.ck}
+                adminMode={adminMode}
+                onWinner={chooseWinner}
+                onUpdatePlayer={updatePlayer}
+                color="yellow"
+                finalMatch
+              />
+              <ChampionBox champion={data.champion} />
+              <ThirdPlaceBox thirdPlace={data.thirdPlace} compact />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -406,9 +506,7 @@ function RoundTitle({ children, color }) {
 }
 
 function RightConnector() {
-  return (
-    <div className="absolute right-[-32px] top-1/2 h-[2px] w-8 bg-slate-400" />
-  );
+  return <div className="absolute right-[-32px] top-1/2 h-[2px] w-8 bg-slate-400" />;
 }
 
 function LeftMergeConnector() {
@@ -425,12 +523,11 @@ function LeftMergeConnector() {
 function getMatchColor(matchId, color) {
   if (color === 'blue') return 'bg-blue-700';
   if (color === 'emerald') return 'bg-emerald-700';
+  if (color === 'green') return 'bg-green-700';
   if (color === 'yellow') return 'bg-yellow-600';
-
   if (matchId === 't2' || matchId === 't4' || matchId === 't6' || matchId === 't8') {
     return 'bg-blue-800';
   }
-
   return 'bg-red-700';
 }
 
@@ -457,15 +554,9 @@ function VerticalMatchCard({
       )}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <div
-          className={classNames(
-            'rounded-xl px-3 py-1 text-sm font-black text-white shadow-sm',
-            titleColor
-          )}
-        >
+        <div className={classNames('rounded-xl px-3 py-1 text-sm font-black text-white shadow-sm', titleColor)}>
           {match.title}
         </div>
-
         {match.winner && (
           <div className="flex items-center gap-1 text-[11px] font-black text-emerald-700">
             <CheckCircle2 size={13} />
@@ -485,7 +576,6 @@ function VerticalMatchCard({
           placeholder="VĐV 1"
           compact={size === 'small'}
         />
-
         <PlayerRow
           value={match.p2}
           selected={match.winner === match.p2}
@@ -501,24 +591,13 @@ function VerticalMatchCard({
   );
 }
 
-function PlayerRow({
-  value,
-  selected,
-  disabled,
-  onClick,
-  onChange,
-  adminMode,
-  placeholder,
-  compact = false,
-}) {
+function PlayerRow({ value, selected, disabled, onClick, onChange, adminMode, placeholder, compact = false }) {
   return (
     <div
       className={classNames(
         'rounded-xl border transition-all',
         compact ? 'px-2 py-1' : 'px-2.5 py-1.5',
-        selected
-          ? 'border-emerald-700 bg-emerald-600 text-white shadow-md'
-          : 'border-slate-200 bg-white text-slate-900'
+        selected ? 'border-emerald-700 bg-emerald-600 text-white shadow-md' : 'border-slate-200 bg-white text-slate-900'
       )}
     >
       {adminMode ? (
@@ -530,12 +609,9 @@ function PlayerRow({
             className={classNames(
               'min-w-0 flex-1 bg-transparent font-black outline-none',
               compact ? 'text-xs' : 'text-sm',
-              selected
-                ? 'text-white placeholder:text-emerald-100'
-                : 'text-slate-900 placeholder:text-slate-400'
+              selected ? 'text-white placeholder:text-emerald-100' : 'text-slate-900 placeholder:text-slate-400'
             )}
           />
-
           <button
             type="button"
             onClick={onClick}
@@ -553,9 +629,7 @@ function PlayerRow({
           </button>
         </div>
       ) : (
-        <div className={classNames('font-black', compact ? 'text-xs' : 'text-sm')}>
-          {value || '-'}
-        </div>
+        <div className={classNames('font-black', compact ? 'text-xs' : 'text-sm')}>{value || '-'}</div>
       )}
     </div>
   );
@@ -566,9 +640,7 @@ function ChampionBox({ champion }) {
     return (
       <div className="mt-4 rounded-2xl border-2 border-dashed border-yellow-300 bg-yellow-50 p-4 text-center">
         <Trophy className="mx-auto mb-2 text-yellow-500" size={36} />
-        <div className="text-base font-black text-yellow-700">
-          Chưa có nhà vô địch
-        </div>
+        <div className="text-base font-black text-yellow-700">Chưa có nhà vô địch</div>
       </div>
     );
   }
@@ -576,34 +648,22 @@ function ChampionBox({ champion }) {
   return (
     <div className="mt-4 rounded-2xl bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 p-4 text-center shadow-xl ring-4 ring-yellow-300">
       <Trophy className="mx-auto mb-2 text-yellow-900" size={40} />
-
-      <div className="text-xs font-black uppercase text-yellow-900">
-        Nhà vô địch
-      </div>
-
-      <div className="mt-1 text-xl font-black text-slate-950">
-        {champion}
-      </div>
+      <div className="text-xs font-black uppercase text-yellow-900">Nhà vô địch</div>
+      <div className="mt-1 text-xl font-black text-slate-950">{champion}</div>
     </div>
   );
 }
 
-function ThirdPlaceBox({ thirdPlace }) {
+function ThirdPlaceBox({ thirdPlace, compact = false }) {
   return (
     <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-3">
       <div className="mb-2 flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-3 py-2 text-center text-sm font-black text-white">
         <Medal size={16} />
         ĐỒNG HẠNG 3
       </div>
-
-      <div className="space-y-1.5 text-center text-xs font-black text-slate-800">
-        <div>
-          Thua BK1: {thirdPlace.p1 || '-'}
-        </div>
-
-        <div>
-          Thua BK2: {thirdPlace.p2 || '-'}
-        </div>
+      <div className={classNames('space-y-1.5 text-center font-black text-slate-800', compact ? 'text-xs' : 'text-xs')}>
+        <div>Thua BK1: {thirdPlace.p1 || '-'}</div>
+        <div>Thua BK2: {thirdPlace.p2 || '-'}</div>
       </div>
     </div>
   );

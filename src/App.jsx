@@ -1032,6 +1032,18 @@ export default function App() {
                 >
                   Knock-out Serie A
                 </button>
+
+                <button
+                  onClick={() => setActivePage('knockoutB')}
+                  className={classNames(
+                    'rounded-xl px-4 py-2 font-bold',
+                    activePage === 'knockoutB'
+                      ? 'bg-purple-700 text-white'
+                      : 'border border-slate-300 bg-white text-slate-700'
+                  )}
+                >
+                  Knock-out Serie B
+                </button>
               </div>
 
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1042,12 +1054,16 @@ export default function App() {
                       ? 'Chỉ hiển thị 4 bàn cố định. Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp.'
                       : activePage === 'group'
                       ? 'Vòng bảng có thể nhập kết quả theo từng ô đối đầu và tự tính xếp hạng.'
-                      : 'Knock-out Serie Acó thể chọn người thắng để tự chuyển lên vòng tiếp theo.'
+                      : activePage === 'knockout'
+                      ? 'Knock-out Serie A có thể chọn người thắng để tự chuyển lên vòng tiếp theo.'
+                      : 'Knock-out Serie B có thể chọn người thắng để tự chuyển lên vòng tiếp theo.'
                     : activePage === 'live'
                     ? 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'
                     : activePage === 'group'
                     ? 'Đây là trang xem vòng bảng. Kết quả sẽ tự cập nhật realtime.'
-                    : 'Đây là trang xem sơ đồ Knock-out Ser. Kết quả sẽ tự cập nhật realtime.'}
+                    : activePage === 'knockout'
+                    ? 'Đây là trang xem sơ đồ Knock-out Serie A. Kết quả sẽ tự cập nhật realtime.'
+                    : 'Đây là trang xem sơ đồ Knock-out Serie B. Kết quả sẽ tự cập nhật realtime.'}
                 </div>
 
                 {activePage === 'live' && (
@@ -1096,17 +1112,27 @@ export default function App() {
               initialPlayers={activeGroupPlayers}
             />
           </div>
-        ) : (
+        ) : activePage === 'knockout' ? (
           <Knockout
             database={database}
             adminMode={adminMode}
             dbPath="clb31tq/knockout/serieA16"
+            title="SERIE A"
+            bracketSize={16}
+          />
+        ) : (
+          <Knockout
+            database={database}
+            adminMode={adminMode}
+            dbPath="clb31tq/knockout/serieB8"
+            title="SERIE B"
+            bracketSize={8}
           />
         )}
 
         <div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
           <div className="flex items-center justify-center gap-2">
-            <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định và có thêm trang vòng bảng, Knock-out.
+            <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định và có thêm trang vòng bảng, Knock-out Serie A và Knock-out Serie B.
           </div>
         </div>
       </div>

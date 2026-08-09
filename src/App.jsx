@@ -1,745 +1,1323 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { RotateCcw, Trophy, Medal, CheckCircle2 } from 'lucide-react';
-import { onValue, ref, set } from 'firebase/database';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as XLSX from 'xlsx';
+import { initializeApp } from 'firebase/app';
+import { getDatabase, onValue, ref, set } from 'firebase/database';
+import GroupStage from './GroupStage';
+import Knockout from './Knockout';
+import {
+  Plus,
+  Minus,
+  RotateCcw,
+  Table2,
+  Clock,
+  Edit3,
+  Wifi,
+  WifiOff,
+  Eye,
+  ShieldCheck,
+  CheckCircle2,
+  Upload,
+  Trash2,
+  Save,
+  UserPlus,
+  X,
+  Pencil,
+} from 'lucide-react';
 
-function createDefaultKnockoutData(bracketSize = 16) {
-  if (Number(bracketSize) === 8) {
-    return {
-      round16: {},
-      quarter: {
-        tk1: { title: 'T1', p1: 'H3 còn lại 1', p2: 'Tư bảng A', winner: '' },
-        tk2: { title: 'T2', p1: 'H3 còn lại 2', p2: 'Tư bảng B', winner: '' },
-        tk3: { title: 'T3', p1: 'Tư bảng C', p2: 'Tư bảng D', winner: '' },
-        tk4: { title: 'T4', p1: 'Tư bảng E', p2: 'Tư bảng F', winner: '' },
-      },
-      semi: {
-        bk1: { title: 'BK1', p1: '', p2: '', winner: '' },
-        bk2: { title: 'BK2', p1: '', p2: '', winner: '' },
-      },
-      final: {
-        ck: { title: 'CHUNG KẾT', p1: '', p2: '', winner: '' },
-      },
-      thirdPlace: {
-        p1: '',
-        p2: '',
-      },
-      champion: '',
-    };
-  }
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
 
-  return {
-    round16: {
-      t1: { title: 'T1', p1: 'N bốc thăm 1 - Nhất bảng', p2: 'H3 bốc thăm 1 - Hạng ba', winner: '' },
-      t2: { title: 'T2', p1: 'Nhì bảng A', p2: 'Nhì bảng D', winner: '' },
-      t3: { title: 'T3', p1: 'N bốc thăm 2 - Nhất bảng', p2: 'H3 bốc thăm 2 - Hạng ba', winner: '' },
-      t4: { title: 'T4', p1: 'Nhì bảng B', p2: 'Nhì bảng C', winner: '' },
-      t5: { title: 'T5', p1: 'N bốc thăm 3 - Nhất bảng', p2: 'H3 bốc thăm 3 - Hạng ba', winner: '' },
-      t6: { title: 'T6', p1: 'N còn lại 1 - Nhất bảng', p2: 'Nhì bảng E', winner: '' },
-      t7: { title: 'T7', p1: 'N bốc thăm 4 - Nhất bảng', p2: 'H3 bốc thăm 4 - Hạng ba', winner: '' },
-      t8: { title: 'T8', p1: 'N còn lại 2 - Nhất bảng', p2: 'Nhì bảng F', winner: '' },
-    },
-    quarter: {
-      tk1: { title: 'TK1', p1: '', p2: '', winner: '' },
-      tk2: { title: 'TK2', p1: '', p2: '', winner: '' },
-      tk3: { title: 'TK3', p1: '', p2: '', winner: '' },
-      tk4: { title: 'TK4', p1: '', p2: '', winner: '' },
-    },
-    semi: {
-      bk1: { title: 'BK1', p1: '', p2: '', winner: '' },
-      bk2: { title: 'BK2', p1: '', p2: '', winner: '' },
-    },
-    final: {
-      ck: { title: 'CHUNG KẾT', p1: '', p2: '', winner: '' },
-    },
-    thirdPlace: {
-      p1: '',
-      p2: '',
-    },
-    champion: '',
-  };
+const hasFirebaseConfig = Boolean(
+  firebaseConfig.apiKey &&
+    firebaseConfig.authDomain &&
+    firebaseConfig.databaseURL &&
+    firebaseConfig.projectId &&
+    firebaseConfig.appId
+);
+
+let database = null;
+if (hasFirebaseConfig) {
+  const app = initializeApp(firebaseConfig);
+  database = getDatabase(app);
+}
+
+const DB_PATH = 'clb31tq/live-score/current';
+const PLAYERS_PATH = 'clb31tq/players';
+const GROUP_ASSIGNMENTS_PATH = 'clb31tq/group-stage/assignments';
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '31TQ2026';
+const SETS_TO_WIN = 3;
+const MAX_TABLES = 4;
+const GROUP_TABS = ['A', 'B', 'C', 'D', 'E', 'F'];
+const PLAYERS_PER_GROUP = 4;
+
+const defaultPlayers = ['Anthony', 'Leo', 'Hico', 'Banlan', 'Minh', 'Hung'];
+const ranks = ['A**', 'A1', 'A2', 'B1', 'B2', 'C1'];
+
+const matchTypes = [
+  'Vòng bảng',
+  'Tứ kết',
+  'Bán kết',
+  'Chung kết',
+  'Tranh hạng 3',
+  'Giao lưu',
+  'Khác',
+];
+
+const createEmptyMatch = id => ({
+  id,
+  table: `Bàn ${id}`,
+  content: '',
+  customContent: '',
+  playerA: '',
+  playerB: '',
+  scoreA: 0,
+  scoreB: 0,
+  setA: 0,
+  setB: 0,
+  setHistory: [],
+  winner: '',
+  status: id === 1 ? 'Đang thi đấu' : 'Chuẩn bị',
+});
+
+const initialMatches = [1, 2, 3, 4].map(createEmptyMatch);
+
+const defaultData = {
+  clubTitle: 'CLB BB 31 TÂN QUÝ',
+  eventTitle: 'BẢNG TỶ SỐ LIVE',
+  note: 'Cập nhật trực tiếp cho ACE CLB theo dõi',
+  matches: initialMatches,
+  updatedAt: Date.now(),
+};
+
+function getInitialAdminMode() {
+  if (typeof window === 'undefined') return false;
+  return sessionStorage.getItem('clb31tq-admin-auth') === '1';
 }
 
 function classNames(...items) {
   return items.filter(Boolean).join(' ');
 }
 
-function cloneData(value) {
-  return JSON.parse(JSON.stringify(value));
-}
+function splitPlayerLabel(label) {
+  const raw = String(label || '').trim();
+  const parts = raw.split(' - ');
+  const rankCandidate = parts.length > 1 ? parts[parts.length - 1].trim() : '';
+  const name = parts.length > 1 ? parts.slice(0, -1).join(' - ').trim() : raw;
 
-function normalizeMatch(match = {}) {
   return {
-    ...match,
-    score1: match.score1 ?? '',
-    score2: match.score2 ?? '',
+    name,
+    rank: rankCandidate || 'B1',
   };
 }
 
-function normalizeRound(round = {}) {
-  return Object.fromEntries(Object.entries(round).map(([key, match]) => [key, normalizeMatch(match)]));
+function formatPlayerLabel(name, rank) {
+  const cleanName = String(name || '').trim();
+  const cleanRank = String(rank || '').trim();
+  return cleanRank ? `${cleanName} - ${cleanRank}` : cleanName;
 }
 
-function prepareKnockoutData(value, bracketSize = 16) {
-  const defaultData = createDefaultKnockoutData(bracketSize);
-  return {
-    ...defaultData,
-    ...(value || {}),
-    round16: normalizeRound({
-      ...defaultData.round16,
-      ...(value?.round16 || {}),
-    }),
-    quarter: normalizeRound({
-      ...defaultData.quarter,
-      ...(value?.quarter || {}),
-    }),
-    semi: normalizeRound({
-      ...defaultData.semi,
-      ...(value?.semi || {}),
-    }),
-    final: normalizeRound({
-      ...defaultData.final,
-      ...(value?.final || {}),
-    }),
-    thirdPlace: {
-      ...defaultData.thirdPlace,
-      ...(value?.thirdPlace || {}),
-    },
-    champion: value?.champion || '',
-  };
-}
-
-function getLoser(match, winner) {
-  if (!match) return '';
-  if (match.p1 === winner) return match.p2 || '';
-  if (match.p2 === winner) return match.p1 || '';
-  return '';
-}
-
-export default function Knockout({
-  database = null,
-  adminMode = false,
-  dbPath = 'clb31tq/knockout/serieA16',
-  title = 'SERIE A',
-  bracketSize = 16,
-}) {
-  const normalizedBracketSize = Number(bracketSize) === 8 ? 8 : 16;
-  const defaultData = useMemo(() => createDefaultKnockoutData(normalizedBracketSize), [normalizedBracketSize]);
-  const storageKey = useMemo(() => `clb31tq-knockout-${dbPath}`, [dbPath]);
+export default function App() {
   const [data, setData] = useState(defaultData);
+  const [players, setPlayers] = useState(defaultPlayers);
+  const [activePage, setActivePage] = useState('live');
+  const [activeGroup, setActiveGroup] = useState('A');
+  const [adminMode, setAdminMode] = useState(getInitialAdminMode);
   const [connected, setConnected] = useState(false);
-  const ROW_HEIGHT_16 = 172;
-  const ROW_HEIGHT_8 = 172;
+  const [showPlayerManager, setShowPlayerManager] = useState(false);
+  const [editingPlayers, setEditingPlayers] = useState([]);
+  const [newPlayerName, setNewPlayerName] = useState('');
+  const [editingPlayerIndex, setEditingPlayerIndex] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editRank, setEditRank] = useState('B1');
+  const [showGroupSetup, setShowGroupSetup] = useState(false);
+  const [groupAssignments, setGroupAssignments] = useState({});
+  const [editingGroupAssignments, setEditingGroupAssignments] = useState({});
+  const hydrated = useRef(false);
+  const fileInputRef = useRef(null);
 
-  useEffect(() => {
-    setData(defaultData);
-  }, [defaultData]);
+  const statusOptions = ['Chuẩn bị', 'Đang thi đấu', 'Kết thúc'];
+  const groupTabs = GROUP_TABS;
+
+  const createEmptyGroupAssignments = () =>
+    groupTabs.reduce((acc, group) => {
+      acc[group] = Array(PLAYERS_PER_GROUP).fill('');
+      return acc;
+    }, {});
+
+  const normalizeGroupAssignments = value => {
+    const base = createEmptyGroupAssignments();
+    if (!value) return base;
+
+    groupTabs.forEach(group => {
+      const rawList = Array.isArray(value[group]) ? value[group] : Object.values(value[group] || {});
+      base[group] = Array.from({ length: PLAYERS_PER_GROUP }, (_, index) => String(rawList[index] || '').trim());
+    });
+
+    return base;
+  };
+
+  const activeGroupPlayers = groupAssignments[activeGroup] || Array(PLAYERS_PER_GROUP).fill('');
+
+  const normalizeMatches = matches => {
+    const list = (matches || []).slice(0, MAX_TABLES);
+    const filled = [...list];
+
+    while (filled.length < MAX_TABLES) {
+      filled.push(createEmptyMatch(filled.length + 1));
+    }
+
+    return filled.map((m, index) => ({
+      ...createEmptyMatch(index + 1),
+      ...m,
+      id: index + 1,
+      table: m.table || `Bàn ${index + 1}`,
+      setHistory: m.setHistory || [],
+      winner: m.winner || '',
+      status: m.status || 'Chuẩn bị',
+      content: m.content || '',
+      customContent: m.customContent || '',
+      scoreA: Number(m.scoreA || 0),
+      scoreB: Number(m.scoreB || 0),
+      setA: Number(m.setA || 0),
+      setB: Number(m.setB || 0),
+    }));
+  };
+
+  const normalizePlayers = value => {
+    if (!value) return defaultPlayers;
+
+    let list = [];
+    if (Array.isArray(value)) {
+      list = value.map(p => (typeof p === 'string' ? p : p?.name));
+    } else {
+      list = Object.values(value).map(p => (typeof p === 'string' ? p : p?.name));
+    }
+
+    const cleaned = list
+      .map(p => String(p || '').trim())
+      .filter(Boolean)
+      .filter((p, index, arr) => arr.indexOf(p) === index)
+      .sort((a, b) => a.localeCompare(b, 'vi'));
+
+    return cleaned.length ? cleaned : defaultPlayers;
+  };
 
   useEffect(() => {
     if (!database) {
-      const saved = localStorage.getItem(storageKey);
+      const saved = localStorage.getItem('clb31tq-live-score');
       if (saved) {
         try {
-          setData(prepareKnockoutData(JSON.parse(saved), normalizedBracketSize));
+          const parsed = JSON.parse(saved);
+          setData({ ...parsed, matches: normalizeMatches(parsed.matches) });
         } catch {
           setData(defaultData);
         }
-      } else {
-        setData(defaultData);
       }
       setConnected(false);
+      hydrated.current = true;
       return;
     }
 
-    const knockoutRef = ref(database, dbPath);
+    const scoreRef = ref(database, DB_PATH);
     const unsubscribe = onValue(
-      knockoutRef,
+      scoreRef,
       snapshot => {
         const value = snapshot.val();
         if (value) {
-          setData(prepareKnockoutData(value, normalizedBracketSize));
+          setData({ ...value, matches: normalizeMatches(value.matches) });
         } else {
-          set(knockoutRef, defaultData);
+          set(scoreRef, defaultData);
           setData(defaultData);
         }
         setConnected(true);
+        hydrated.current = true;
       },
       () => {
         setConnected(false);
+        hydrated.current = true;
       }
     );
 
     return () => unsubscribe();
-  }, [database, dbPath, storageKey, normalizedBracketSize, defaultData]);
+  }, []);
+
+  useEffect(() => {
+    if (!database) {
+      setPlayers(defaultPlayers);
+      return;
+    }
+
+    const playersRef = ref(database, PLAYERS_PATH);
+    const unsubscribe = onValue(
+      playersRef,
+      snapshot => {
+        setPlayers(normalizePlayers(snapshot.val()));
+      },
+      () => {
+        setPlayers(defaultPlayers);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!database) {
+      const savedAssignments = localStorage.getItem('clb31tq-group-assignments');
+      if (savedAssignments) {
+        try {
+          setGroupAssignments(normalizeGroupAssignments(JSON.parse(savedAssignments)));
+        } catch {
+          setGroupAssignments(createEmptyGroupAssignments());
+        }
+      } else {
+        setGroupAssignments(createEmptyGroupAssignments());
+      }
+      return;
+    }
+
+    const assignmentsRef = ref(database, GROUP_ASSIGNMENTS_PATH);
+    const unsubscribe = onValue(
+      assignmentsRef,
+      snapshot => {
+        setGroupAssignments(normalizeGroupAssignments(snapshot.val()));
+      },
+      () => {
+        setGroupAssignments(createEmptyGroupAssignments());
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (showGroupSetup) {
+      setEditingGroupAssignments(normalizeGroupAssignments(groupAssignments));
+    }
+  }, [showGroupSetup, groupAssignments]);
+
+  useEffect(() => {
+    if (showPlayerManager) {
+      setEditingPlayers(players);
+    }
+  }, [showPlayerManager, players]);
 
   const saveData = async nextData => {
-    const payload = prepareKnockoutData(nextData, normalizedBracketSize);
+    const payload = {
+      ...nextData,
+      matches: normalizeMatches(nextData.matches),
+      updatedAt: Date.now(),
+    };
+
     setData(payload);
+
     if (database) {
-      await set(ref(database, dbPath), payload);
+      await set(ref(database, DB_PATH), payload);
     } else {
-      localStorage.setItem(storageKey, JSON.stringify(payload));
+      localStorage.setItem('clb31tq-live-score', JSON.stringify(payload));
     }
   };
 
-  const clearDownstreamIfNeeded = (next, oldWinner) => {
-    if (!oldWinner) return;
+  const visibleMatches = useMemo(() => normalizeMatches(data.matches), [data.matches]);
 
-    Object.keys(next.quarter).forEach(key => {
-      const match = next.quarter[key];
-      if (match.p1 === oldWinner) match.p1 = '';
-      if (match.p2 === oldWinner) match.p2 = '';
-      if (match.winner === oldWinner) match.winner = '';
+  const updateField = (field, value) => {
+    if (!adminMode) return;
+    saveData({ ...data, [field]: value });
+  };
+
+  const updateMatch = (id, field, value) => {
+    if (!adminMode) return;
+    const matches = normalizeMatches(data.matches).map(m => (m.id === id ? { ...m, [field]: value } : m));
+    saveData({ ...data, matches });
+  };
+
+  const savePlayersToFirebase = async nextPlayers => {
+    const cleanedPlayers = nextPlayers
+      .map(name => String(name || '').trim())
+      .filter(Boolean)
+      .filter((name, index, arr) => arr.indexOf(name) === index);
+
+    const playersPayload = cleanedPlayers.reduce((acc, name, index) => {
+      const key = `p${String(index + 1).padStart(3, '0')}`;
+      acc[key] = { name };
+      return acc;
+    }, {});
+
+    if (database) {
+      await set(ref(database, PLAYERS_PATH), playersPayload);
+    }
+
+    setPlayers(cleanedPlayers);
+    return cleanedPlayers;
+  };
+
+  const saveGroupAssignments = async nextAssignments => {
+    const payload = normalizeGroupAssignments(nextAssignments);
+    setGroupAssignments(payload);
+
+    if (database) {
+      await set(ref(database, GROUP_ASSIGNMENTS_PATH), payload);
+    } else {
+      localStorage.setItem('clb31tq-group-assignments', JSON.stringify(payload));
+    }
+
+    return payload;
+  };
+
+  const updateEditingGroupPlayer = (group, slotIndex, value) => {
+    setEditingGroupAssignments(prev => {
+      const next = normalizeGroupAssignments(prev);
+      next[group] = [...next[group]];
+      next[group][slotIndex] = value;
+      return next;
+    });
+  };
+
+  const saveGroupSetup = async () => {
+    const payload = normalizeGroupAssignments(editingGroupAssignments);
+    const selectedPlayers = Object.values(payload).flat().filter(Boolean);
+    const duplicatePlayer = selectedPlayers.find((name, index, arr) => arr.indexOf(name) !== index);
+
+    if (duplicatePlayer) {
+      window.alert(`VĐV "${duplicatePlayer}" đang bị chọn trùng giữa các bảng. Anh kiểm tra lại giúp em.`);
+      return;
+    }
+
+    await saveGroupAssignments(payload);
+    setShowGroupSetup(false);
+    window.alert(`Đã lưu danh sách VĐV Bảng ${activeGroup}.`);
+  };
+
+  const getPlayerNameFromRow = row => {
+    const preferredKeys = ['Vận Động Viên', 'Vận động viên', 'VĐV', 'VDV', 'Họ tên', 'Tên', 'Name', 'name'];
+
+    for (const key of preferredKeys) {
+      if (row[key]) return String(row[key]).trim();
+    }
+
+    const values = Object.values(row)
+      .map(value => String(value || '').trim())
+      .filter(Boolean);
+
+    return values.find(value => !/^\d+(\.0)?$/.test(value)) || '';
+  };
+
+  const importPlayersFromExcel = async event => {
+    if (!adminMode) return;
+
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      const importedPlayers = rows
+        .map(getPlayerNameFromRow)
+        .map(name => name.trim())
+        .filter(Boolean)
+        .filter((name, index, arr) => arr.indexOf(name) === index);
+
+      if (!importedPlayers.length) {
+        window.alert('Không tìm thấy tên VĐV trong file Excel. Cột nên có tên: Vận Động Viên, VĐV, Họ tên hoặc Tên.');
+        return;
+      }
+
+      await savePlayersToFirebase(importedPlayers);
+      window.alert(`Đã import ${importedPlayers.length} VĐV từ Excel.`);
+    } catch (error) {
+      console.error(error);
+      window.alert('Import Excel không thành công. Anh kiểm tra lại file .xlsx, .xls hoặc .csv.');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const addPlayerToManager = () => {
+    const name = newPlayerName.trim();
+    if (!name) return;
+
+    if (editingPlayers.includes(name)) {
+      window.alert('Tên VĐV này đã có trong danh sách.');
+      return;
+    }
+
+    setEditingPlayers([...editingPlayers, name]);
+    setNewPlayerName('');
+  };
+
+  const openEditPlayer = index => {
+    const parsed = splitPlayerLabel(editingPlayers[index]);
+    setEditingPlayerIndex(index);
+    setEditName(parsed.name);
+    setEditRank(parsed.rank);
+  };
+
+  const closeEditPlayer = () => {
+    setEditingPlayerIndex(null);
+    setEditName('');
+    setEditRank('B1');
+  };
+
+  const saveEditPlayer = () => {
+    if (editingPlayerIndex === null) return;
+    if (!editName.trim()) {
+      window.alert('Tên VĐV không được để trống.');
+      return;
+    }
+
+    const nextPlayers = [...editingPlayers];
+    nextPlayers[editingPlayerIndex] = formatPlayerLabel(editName, editRank);
+    setEditingPlayers(nextPlayers);
+    closeEditPlayer();
+  };
+
+  const deletePlayerFromManager = index => {
+    const name = editingPlayers[index];
+    const confirmDelete = window.confirm(`Xóa VĐV "${name}" khỏi danh sách?`);
+    if (!confirmDelete) return;
+    setEditingPlayers(editingPlayers.filter((_, i) => i !== index));
+  };
+
+  const savePlayerManager = async () => {
+    const oldPlayers = players;
+    const newPlayers = editingPlayers
+      .map(name => String(name || '').trim())
+      .filter(Boolean)
+      .filter((name, index, arr) => arr.indexOf(name) === index);
+
+    const renameMap = {};
+    oldPlayers.forEach((oldName, index) => {
+      const newName = newPlayers[index];
+      if (oldName && newName && oldName !== newName) {
+        renameMap[oldName] = newName;
+      }
     });
 
-    Object.keys(next.semi).forEach(key => {
-      const match = next.semi[key];
-      if (match.p1 === oldWinner) match.p1 = '';
-      if (match.p2 === oldWinner) match.p2 = '';
-      if (match.winner === oldWinner) match.winner = '';
+    const updatedMatches = normalizeMatches(data.matches).map(match => ({
+      ...match,
+      playerA: renameMap[match.playerA] || match.playerA,
+      playerB: renameMap[match.playerB] || match.playerB,
+    }));
+
+    await savePlayersToFirebase(newPlayers);
+    await saveData({ ...data, matches: updatedMatches });
+
+    setShowPlayerManager(false);
+    window.alert('Đã lưu danh sách VĐV.');
+  };
+
+  const changePoint = (id, side, delta) => {
+    if (!adminMode) return;
+    const matches = normalizeMatches(data.matches).map(m => {
+      if (m.id !== id) return m;
+      if (m.status === 'Kết thúc') return m;
+      const field = side === 'A' ? 'scoreA' : 'scoreB';
+      return { ...m, [field]: Math.max(0, Number(m[field] || 0) + delta) };
+    });
+    saveData({ ...data, matches });
+  };
+
+  const getSetWins = setHistory => {
+    return (setHistory || []).reduce(
+      (acc, setItem) => {
+        const scoreA = Number(setItem.scoreA || 0);
+        const scoreB = Number(setItem.scoreB || 0);
+
+        if (scoreA > scoreB) acc.setA += 1;
+        if (scoreB > scoreA) acc.setB += 1;
+
+        return acc;
+      },
+      { setA: 0, setB: 0 }
+    );
+  };
+
+  const finishSet = id => {
+    if (!adminMode) return;
+
+    const matches = normalizeMatches(data.matches).map(m => {
+      if (m.id !== id) return m;
+      if (m.status === 'Kết thúc') {
+        window.alert('Trận này đã kết thúc. Bấm Reset nếu muốn bắt đầu lại.');
+        return m;
+      }
+
+      const scoreA = Number(m.scoreA || 0);
+      const scoreB = Number(m.scoreB || 0);
+
+      if (scoreA === 0 && scoreB === 0) {
+        window.alert('Set hiện tại đang 0-0 nên chưa lưu được.');
+        return m;
+      }
+
+      if (scoreA === scoreB) {
+        window.alert('Tỷ số đang hòa, chưa thể kết thúc set.');
+        return m;
+      }
+
+      const nextSetHistory = [...(m.setHistory || []), { scoreA, scoreB }];
+      const calculatedWins = getSetWins(nextSetHistory);
+      const nextSetA = calculatedWins.setA;
+      const nextSetB = calculatedWins.setB;
+      const isFinished = nextSetA >= SETS_TO_WIN || nextSetB >= SETS_TO_WIN;
+      const winner = isFinished ? (nextSetA > nextSetB ? m.playerA : m.playerB) : '';
+
+      return {
+        ...m,
+        scoreA: 0,
+        scoreB: 0,
+        setA: nextSetA,
+        setB: nextSetB,
+        setHistory: nextSetHistory,
+        winner,
+        status: isFinished ? 'Kết thúc' : 'Đang thi đấu',
+      };
     });
 
-    if (next.final.ck.p1 === oldWinner) next.final.ck.p1 = '';
-    if (next.final.ck.p2 === oldWinner) next.final.ck.p2 = '';
-    if (next.final.ck.winner === oldWinner) next.final.ck.winner = '';
-    if (next.thirdPlace.p1 === oldWinner) next.thirdPlace.p1 = '';
-    if (next.thirdPlace.p2 === oldWinner) next.thirdPlace.p2 = '';
-    if (next.champion === oldWinner) next.champion = '';
+    saveData({ ...data, matches });
   };
 
-  const pushWinnerForward = (next, matchId, winner, oldWinner) => {
-    clearDownstreamIfNeeded(next, oldWinner);
+  const resetScore = id => {
+    if (!adminMode) return;
+    const matches = normalizeMatches(data.matches).map(m =>
+      m.id === id
+        ? {
+            ...m,
+            scoreA: 0,
+            scoreB: 0,
+            setA: 0,
+            setB: 0,
+            setHistory: [],
+            winner: '',
+            status: 'Đang thi đấu',
+          }
+        : m
+    );
+    saveData({ ...data, matches });
+  };
 
-    if (matchId === 't1') next.quarter.tk1.p1 = winner;
-    if (matchId === 't2') next.quarter.tk1.p2 = winner;
-    if (matchId === 't3') next.quarter.tk2.p1 = winner;
-    if (matchId === 't4') next.quarter.tk2.p2 = winner;
-    if (matchId === 't5') next.quarter.tk3.p1 = winner;
-    if (matchId === 't6') next.quarter.tk3.p2 = winner;
-    if (matchId === 't7') next.quarter.tk4.p1 = winner;
-    if (matchId === 't8') next.quarter.tk4.p2 = winner;
-
-    if (matchId === 'tk1') next.semi.bk1.p1 = winner;
-    if (matchId === 'tk2') next.semi.bk1.p2 = winner;
-    if (matchId === 'tk3') next.semi.bk2.p1 = winner;
-    if (matchId === 'tk4') next.semi.bk2.p2 = winner;
-
-    if (matchId === 'bk1') {
-      next.final.ck.p1 = winner;
-      next.thirdPlace.p1 = getLoser(next.semi.bk1, winner);
+  const handleAdminToggle = () => {
+    if (adminMode) {
+      sessionStorage.removeItem('clb31tq-admin-auth');
+      setAdminMode(false);
+      return;
     }
 
-    if (matchId === 'bk2') {
-      next.final.ck.p2 = winner;
-      next.thirdPlace.p2 = getLoser(next.semi.bk2, winner);
-    }
-
-    if (matchId === 'ck') {
-      next.champion = winner;
+    const pwd = window.prompt('Nhập mật khẩu Admin để nhập điểm');
+    if (pwd === ADMIN_PASSWORD) {
+      sessionStorage.setItem('clb31tq-admin-auth', '1');
+      setAdminMode(true);
+    } else if (pwd !== null) {
+      window.alert('Sai mật khẩu Admin');
     }
   };
 
-  const chooseWinner = async (roundKey, matchId, winner) => {
-    if (!adminMode) return;
-    if (!winner) return;
-
-    const next = prepareKnockoutData(cloneData(data), normalizedBracketSize);
-    const match = next[roundKey][matchId];
-    const oldWinner = match.winner;
-    match.winner = winner;
-    pushWinnerForward(next, matchId, winner, oldWinner);
-    await saveData(next);
+  const statusClass = status => {
+    if (status === 'Đang thi đấu') return 'bg-red-600 text-white';
+    if (status === 'Kết thúc') return 'bg-emerald-600 text-white';
+    return 'bg-amber-400 text-slate-950';
   };
 
-  const updatePlayer = async (roundKey, matchId, playerKey, value) => {
-    if (!adminMode) return;
+  const lastUpdated = data.updatedAt
+    ? new Date(data.updatedAt).toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    : '--:--:--';
 
-    const next = prepareKnockoutData(cloneData(data), normalizedBracketSize);
-    const match = next[roundKey][matchId];
-    const oldWinner = match.winner;
-    match[playerKey] = value;
+  const EditPlayerPopup = () => {
+    if (editingPlayerIndex === null) return null;
 
-    if (match.winner && match.winner !== match.p1 && match.winner !== match.p2) {
-      match.winner = '';
-      clearDownstreamIfNeeded(next, oldWinner);
-    }
+    const rankOptions = ranks.includes(editRank) ? ranks : [editRank, ...ranks];
 
-    await saveData(next);
-  };
-
-  const updateScore = async (roundKey, matchId, scoreKey, value) => {
-    if (!adminMode) return;
-
-    const next = prepareKnockoutData(cloneData(data), normalizedBracketSize);
-    const match = next[roundKey][matchId];
-    const cleanedValue = String(value || '').replace(/\D/g, '').slice(0, 2);
-    match[scoreKey] = cleanedValue;
-    await saveData(next);
-  };
-
-  const resetKnockout = async () => {
-    if (!adminMode) return;
-    const confirmReset = window.confirm(`Reset toàn bộ sơ đồ Knock-out ${title}?`);
-    if (!confirmReset) return;
-    await saveData(defaultData);
-  };
-
-  const round16Entries = Object.entries(data.round16);
-  const quarterEntries = Object.entries(data.quarter);
-  const semiEntries = Object.entries(data.semi);
-
-  return (
-    <div className="rounded-3xl bg-white p-4 shadow-2xl sm:p-6">
-      <div className="mb-5 flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="text-2xl font-black text-red-700 sm:text-3xl">
-            🏓 SƠ ĐỒ KNOCK OUT {title} - {normalizedBracketSize} VĐV
-          </div>
-          <div className="mt-1 text-sm font-bold text-slate-500">
-            Bấm “Thắng” để tự động đẩy VĐV lên nhánh tiếp theo.
-          </div>
-          <div className="mt-1 text-xs font-bold text-slate-400">
-            Trạng thái: {connected ? 'Realtime Firebase' : 'Local'}
-          </div>
-        </div>
-
-        {adminMode && (
-          <button
-            type="button"
-            onClick={resetKnockout}
-            className="flex items-center justify-center gap-2 rounded-xl border border-red-300 bg-red-50 px-4 py-3 font-black text-red-700 hover:bg-red-100"
-          >
-            <RotateCcw size={17} />
-            Reset Knock-out
-          </button>
-        )}
-      </div>
-
-      {normalizedBracketSize === 8 ? (
-        <SerieBBracket
-          data={data}
-          quarterEntries={quarterEntries}
-          semiEntries={semiEntries}
-          rowHeight={ROW_HEIGHT_8}
-          adminMode={adminMode}
-          chooseWinner={chooseWinner}
-          updatePlayer={updatePlayer}
-          updateScore={updateScore}
-        />
-      ) : (
-        <SerieABracket
-          data={data}
-          round16Entries={round16Entries}
-          quarterEntries={quarterEntries}
-          semiEntries={semiEntries}
-          rowHeight={ROW_HEIGHT_16}
-          adminMode={adminMode}
-          chooseWinner={chooseWinner}
-          updatePlayer={updatePlayer}
-          updateScore={updateScore}
-        />
-      )}
-
-      <div className="mt-5 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
-        {normalizedBracketSize === 8
-          ? 'Ghi chú Serie B: gồm 2 VĐV hạng 3 còn lại và 6 VĐV hạng tư bảng A đến F. Thua BK1 và thua BK2 đồng hạng 3.'
-          : 'Ghi chú Serie A: N = VĐV nhất bảng theo thứ tự bốc thăm. H3 = VĐV hạng ba xuất sắc theo thứ tự bốc thăm.'}
-      </div>
-    </div>
-  );
-}
-
-function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore }) {
-  return (
-    <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-red-100">
-      <div className="min-w-[1080px]">
-        <div className="mb-4 grid grid-cols-[260px_230px_230px_250px] gap-x-8">
-          <RoundTitle color="text-red-800">VÒNG 1/8</RoundTitle>
-          <RoundTitle color="text-blue-800">TỨ KẾT</RoundTitle>
-          <RoundTitle color="text-emerald-800">BÁN KẾT</RoundTitle>
-          <RoundTitle color="text-yellow-700">CHUNG KẾT</RoundTitle>
-        </div>
-
-        <div
-          className="grid grid-cols-[260px_230px_230px_250px] gap-x-8"
-          style={{ gridTemplateRows: `repeat(8, ${rowHeight}px)` }}
-        >
-          {round16Entries.map(([id, match], index) => (
-            <div
-              key={id}
-              className="relative flex items-center"
-              style={{ gridColumn: 1, gridRow: index + 1 }}
-            >
-              <VerticalMatchCard
-                roundKey="round16"
-                matchId={id}
-                match={match}
-                adminMode={adminMode}
-                onWinner={chooseWinner}
-                onUpdatePlayer={updatePlayer}
-                onUpdateScore={updateScore}
-                size="small"
-              />
-              <RightConnector />
-            </div>
-          ))}
-
-          {quarterEntries.map(([id, match], index) => (
-            <div
-              key={id}
-              className="relative flex items-center"
-              style={{ gridColumn: 2, gridRow: `${index * 2 + 1} / span 2` }}
-            >
-              <LeftMergeConnector />
-              <VerticalMatchCard
-                roundKey="quarter"
-                matchId={id}
-                match={match}
-                adminMode={adminMode}
-                onWinner={chooseWinner}
-                onUpdatePlayer={updatePlayer}
-                onUpdateScore={updateScore}
-                color="blue"
-              />
-              <RightConnector />
-            </div>
-          ))}
-
-          {semiEntries.map(([id, match], index) => (
-            <div
-              key={id}
-              className="relative flex items-center"
-              style={{ gridColumn: 3, gridRow: `${index * 4 + 1} / span 4` }}
-            >
-              <LeftMergeConnector />
-              <VerticalMatchCard
-                roundKey="semi"
-                matchId={id}
-                match={match}
-                adminMode={adminMode}
-                onWinner={chooseWinner}
-                onUpdatePlayer={updatePlayer}
-                onUpdateScore={updateScore}
-                color="emerald"
-              />
-              <RightConnector />
-            </div>
-          ))}
-
-          <div className="relative flex items-center" style={{ gridColumn: 4, gridRow: '1 / span 8' }}>
-            <LeftMergeConnector />
-            <div className="w-full">
-              <VerticalMatchCard
-                roundKey="final"
-                matchId="ck"
-                match={data.final.ck}
-                adminMode={adminMode}
-                onWinner={chooseWinner}
-                onUpdatePlayer={updatePlayer}
-                onUpdateScore={updateScore}
-                color="yellow"
-                finalMatch
-              />
-              <ChampionBox champion={data.champion} />
-              <ThirdPlaceBox thirdPlace={data.thirdPlace} />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore }) {
-  return (
-    <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-emerald-100">
-      <div className="min-w-[820px]">
-        <div className="mb-4 grid grid-cols-[260px_230px_250px] gap-x-8">
-          <RoundTitle color="text-emerald-800">TỨ KẾT</RoundTitle>
-          <RoundTitle color="text-emerald-800">BÁN KẾT</RoundTitle>
-          <RoundTitle color="text-yellow-700">CHUNG KẾT</RoundTitle>
-        </div>
-
-        <div
-          className="grid grid-cols-[260px_230px_250px] gap-x-8"
-          style={{ gridTemplateRows: `repeat(4, ${rowHeight}px)` }}
-        >
-          {quarterEntries.map(([id, match], index) => (
-            <div
-              key={id}
-              className="relative flex items-center"
-              style={{ gridColumn: 1, gridRow: index + 1 }}
-            >
-              <VerticalMatchCard
-                roundKey="quarter"
-                matchId={id}
-                match={match}
-                adminMode={adminMode}
-                onWinner={chooseWinner}
-                onUpdatePlayer={updatePlayer}
-                onUpdateScore={updateScore}
-                color="green"
-              />
-              <RightConnector />
-            </div>
-          ))}
-
-          {semiEntries.map(([id, match], index) => (
-            <div
-              key={id}
-              className="relative flex items-center"
-              style={{ gridColumn: 2, gridRow: `${index * 2 + 1} / span 2` }}
-            >
-              <LeftMergeConnector />
-              <VerticalMatchCard
-                roundKey="semi"
-                matchId={id}
-                match={match}
-                adminMode={adminMode}
-                onWinner={chooseWinner}
-                onUpdatePlayer={updatePlayer}
-                onUpdateScore={updateScore}
-                color="emerald"
-              />
-              <RightConnector />
-            </div>
-          ))}
-
-          <div className="relative flex items-center" style={{ gridColumn: 3, gridRow: '1 / span 4' }}>
-            <LeftMergeConnector />
-            <div className="w-full">
-              <VerticalMatchCard
-                roundKey="final"
-                matchId="ck"
-                match={data.final.ck}
-                adminMode={adminMode}
-                onWinner={chooseWinner}
-                onUpdatePlayer={updatePlayer}
-                onUpdateScore={updateScore}
-                color="yellow"
-                finalMatch
-              />
-              <ChampionBox champion={data.champion} />
-              <ThirdPlaceBox thirdPlace={data.thirdPlace} compact />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RoundTitle({ children, color }) {
-  return (
-    <div className={classNames('text-center text-xl font-black uppercase tracking-wide', color)}>
-      {children}
-    </div>
-  );
-}
-
-function RightConnector() {
-  return <div className="absolute right-[-32px] top-1/2 h-[2px] w-8 bg-slate-400" />;
-}
-
-function LeftMergeConnector() {
-  return (
-    <>
-      <div className="absolute left-[-32px] top-[25%] h-[2px] w-8 bg-slate-300" />
-      <div className="absolute left-[-32px] top-[75%] h-[2px] w-8 bg-slate-300" />
-      <div className="absolute left-[-32px] top-[25%] h-1/2 w-[2px] bg-slate-300" />
-      <div className="absolute left-[-32px] top-1/2 h-[2px] w-8 bg-slate-400" />
-    </>
-  );
-}
-
-function getMatchColor(matchId, color) {
-  if (color === 'blue') return 'bg-blue-700';
-  if (color === 'emerald') return 'bg-emerald-700';
-  if (color === 'green') return 'bg-green-700';
-  if (color === 'yellow') return 'bg-yellow-600';
-  if (matchId === 't2' || matchId === 't4' || matchId === 't6' || matchId === 't8') {
-    return 'bg-blue-800';
-  }
-  return 'bg-red-700';
-}
-
-function VerticalMatchCard({
-  roundKey,
-  matchId,
-  match,
-  adminMode,
-  onWinner,
-  onUpdatePlayer,
-  onUpdateScore,
-  color = 'red',
-  finalMatch = false,
-  size = 'normal',
-}) {
-  const titleColor = getMatchColor(matchId, color);
-
-  return (
-    <div
-      className={classNames(
-        'relative z-10 w-full rounded-2xl border-2 bg-white shadow-md transition-all',
-        size === 'small' ? 'p-2' : 'p-3',
-        match.winner ? 'border-emerald-400' : 'border-slate-200',
-        finalMatch && 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200'
-      )}
-    >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className={classNames('rounded-xl px-3 py-1 text-sm font-black text-white shadow-sm', titleColor)}>
-          {match.title}
-        </div>
-        {match.winner && (
-          <div className="flex items-center gap-1 text-[11px] font-black text-emerald-700">
-            <CheckCircle2 size={13} />
-            Đã chọn
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-1.5">
-        <PlayerRow
-          value={match.p1}
-          selected={match.winner === match.p1}
-          disabled={!String(match.p1 || '').trim() || !adminMode}
-          onClick={() => onWinner(roundKey, matchId, match.p1)}
-          onChange={value => onUpdatePlayer(roundKey, matchId, 'p1', value)}
-          score={match.score1}
-          onScoreChange={value => onUpdateScore(roundKey, matchId, 'score1', value)}
-          adminMode={adminMode}
-          placeholder="VĐV 1"
-          compact={size === 'small'}
-        />
-        <PlayerRow
-          value={match.p2}
-          selected={match.winner === match.p2}
-          disabled={!String(match.p2 || '').trim() || !adminMode}
-          onClick={() => onWinner(roundKey, matchId, match.p2)}
-          onChange={value => onUpdatePlayer(roundKey, matchId, 'p2', value)}
-          score={match.score2}
-          onScoreChange={value => onUpdateScore(roundKey, matchId, 'score2', value)}
-          adminMode={adminMode}
-          placeholder="VĐV 2"
-          compact={size === 'small'}
-        />
-      </div>
-    </div>
-  );
-}
-
-function PlayerRow({
-  value,
-  selected,
-  disabled,
-  onClick,
-  onChange,
-  score,
-  onScoreChange,
-  adminMode,
-  placeholder,
-  compact = false,
-}) {
-  const hasScore = String(score ?? '').trim() !== '';
-
-  return (
-    <div
-      className={classNames(
-        'rounded-xl border transition-all',
-        compact ? 'px-2 py-1' : 'px-2.5 py-1.5',
-        selected ? 'border-emerald-700 bg-emerald-600 text-white shadow-md' : 'border-slate-200 bg-white text-slate-900'
-      )}
-    >
-      {adminMode ? (
-        <div className="flex items-center gap-2">
-          <input
-            value={value || ''}
-            onChange={e => onChange(e.target.value)}
-            placeholder={placeholder}
-            className={classNames(
-              'min-w-0 flex-1 bg-transparent font-black outline-none',
-              compact ? 'text-xs' : 'text-sm',
-              selected ? 'text-white placeholder:text-emerald-100' : 'text-slate-900 placeholder:text-slate-400'
-            )}
-          />
-          <input
-            type="text"
-            inputMode="numeric"
-            maxLength={2}
-            value={score ?? ''}
-            onChange={e => onScoreChange(e.target.value)}
-            placeholder="0"
-            title="Nhập số set thắng, ví dụ 3"
-            className={classNames(
-              'h-8 w-10 shrink-0 rounded-lg border text-center text-sm font-black outline-none',
-              selected
-                ? 'border-white/60 bg-white text-emerald-700 placeholder:text-emerald-300'
-                : 'border-slate-300 bg-slate-50 text-slate-900 placeholder:text-slate-400'
-            )}
-          />
-          <button
-            type="button"
-            onClick={onClick}
-            disabled={disabled}
-            className={classNames(
-              'shrink-0 rounded-lg px-2 py-0.5 text-[11px] font-black',
-              selected
-                ? 'bg-white text-emerald-700'
-                : disabled
-                ? 'bg-slate-200 text-slate-400'
-                : 'bg-emerald-600 text-white hover:bg-emerald-700'
-            )}
-          >
-            Thắng
-          </button>
-        </div>
-      ) : (
-        <div className="flex items-center justify-between gap-2">
-          <div className={classNames('min-w-0 flex-1 truncate font-black', compact ? 'text-xs' : 'text-sm')}>
-            {value || '-'}
-          </div>
-          <div
-            className={classNames(
-              'shrink-0 rounded-lg px-2 py-0.5 text-center text-xs font-black',
-              selected ? 'bg-white text-emerald-700' : hasScore ? 'bg-slate-100 text-slate-800' : 'bg-slate-50 text-slate-400'
-            )}
-          >
-            {hasScore ? score : '-'}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ChampionBox({ champion }) {
-  if (!champion) {
     return (
-      <div className="mt-4 rounded-2xl border-2 border-dashed border-yellow-300 bg-yellow-50 p-4 text-center">
-        <Trophy className="mx-auto mb-2 text-yellow-500" size={36} />
-        <div className="text-base font-black text-yellow-700">Chưa có nhà vô địch</div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xl font-black text-slate-900">Sửa thông tin VĐV</div>
+              <div className="mt-1 text-sm font-semibold text-slate-500">
+                Đổi tên hoặc chọn nhanh hạng, không cần gõ lại toàn bộ.
+              </div>
+            </div>
+            <button onClick={closeEditPlayer} className="rounded-xl border border-slate-300 p-2 text-slate-700">
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1 block text-sm font-bold text-slate-700">Tên VĐV</label>
+              <input
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base font-bold outline-none focus:border-emerald-600"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-bold text-slate-700">Hạng</label>
+              <select
+                value={editRank}
+                onChange={e => setEditRank(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-bold outline-none focus:border-emerald-600"
+              >
+                {rankOptions.map(rank => (
+                  <option key={rank} value={rank}>
+                    {rank}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600">
+              Sau khi lưu: <span className="font-black text-slate-900">{formatPlayerLabel(editName, editRank)}</span>
+            </div>
+          </div>
+
+          <div className="mt-5 flex justify-end gap-2">
+            <button onClick={closeEditPlayer} className="rounded-xl border border-slate-300 px-4 py-3 font-bold text-slate-700">
+              Hủy
+            </button>
+            <button onClick={saveEditPlayer} className="rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white hover:bg-emerald-700">
+              Lưu
+            </button>
+          </div>
+        </div>
       </div>
     );
-  }
+  };
 
-  return (
-    <div className="mt-4 rounded-2xl bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 p-4 text-center shadow-xl ring-4 ring-yellow-300">
-      <Trophy className="mx-auto mb-2 text-yellow-900" size={40} />
-      <div className="text-xs font-black uppercase text-yellow-900">Nhà vô địch</div>
-      <div className="mt-1 text-xl font-black text-slate-950">{champion}</div>
+  const PlayerManagerPanel = () => (
+    <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 shadow-inner">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-xl font-black text-emerald-800">Quản lý VĐV</div>
+          <div className="text-sm font-semibold text-slate-600">
+            Thêm, sửa hoặc xóa tên VĐV. Bấm Lưu danh sách để cập nhật Firebase.
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowPlayerManager(false)}
+          className="rounded-xl border border-slate-300 bg-white px-3 py-2 font-bold text-slate-700"
+        >
+          <X size={16} />
+        </button>
+      </div>
+
+      <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+        <input
+          value={newPlayerName}
+          onChange={e => setNewPlayerName(e.target.value)}
+          placeholder="Nhập tên VĐV mới, VD: Tuấn Anh - B1"
+          className="w-full rounded-xl border border-emerald-300 bg-white px-4 py-3 text-base font-bold outline-none focus:border-emerald-600"
+        />
+
+        <button
+          onClick={addPlayerToManager}
+          className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white hover:bg-emerald-700"
+        >
+          <UserPlus size={16} />
+          Thêm VĐV
+        </button>
+      </div>
+
+      <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
+        {editingPlayers.map((name, index) => (
+          <div key={`${name}-${index}`} className="flex items-center justify-between gap-3 rounded-2xl bg-white p-3 shadow-sm">
+            <div className="min-w-0 flex-1 truncate text-base font-black text-slate-900 sm:text-lg">{name}</div>
+
+            <div className="flex shrink-0 gap-2">
+              <button
+                onClick={() => openEditPlayer(index)}
+                className="flex items-center justify-center gap-1 rounded-xl bg-blue-600 px-3 py-2 font-bold text-white hover:bg-blue-700"
+              >
+                <Pencil size={16} />
+                Sửa
+              </button>
+
+              <button
+                onClick={() => deletePlayerFromManager(index)}
+                className="flex items-center justify-center gap-1 rounded-xl border border-red-200 px-3 py-2 font-bold text-red-600 hover:bg-red-50"
+              >
+                <Trash2 size={16} />
+                Xóa
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <button
+          onClick={() => {
+            setEditingPlayers(players);
+            setNewPlayerName('');
+            closeEditPlayer();
+          }}
+          className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold text-slate-700"
+        >
+          Hoàn tác
+        </button>
+
+        <button
+          onClick={savePlayerManager}
+          className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white hover:bg-emerald-700"
+        >
+          <Save size={16} />
+          Lưu danh sách
+        </button>
+      </div>
+
+      <EditPlayerPopup />
     </div>
   );
-}
 
-function ThirdPlaceBox({ thirdPlace, compact = false }) {
-  return (
-    <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-3">
-      <div className="mb-2 flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-3 py-2 text-center text-sm font-black text-white">
-        <Medal size={16} />
-        ĐỒNG HẠNG 3
+  const GroupSetupPanel = () => {
+    const currentAssignments = normalizeGroupAssignments(editingGroupAssignments);
+    const currentGroupPlayers = currentAssignments[activeGroup] || Array(PLAYERS_PER_GROUP).fill('');
+    const selectedInOtherGroups = Object.entries(currentAssignments)
+      .filter(([group]) => group !== activeGroup)
+      .flatMap(([, groupPlayers]) => groupPlayers)
+      .filter(Boolean);
+
+    const getDropdownOptions = slotIndex => {
+      const currentValue = currentGroupPlayers[slotIndex];
+      const selectedInCurrentGroup = currentGroupPlayers.filter((name, index) => name && index !== slotIndex);
+
+      return [currentValue, ...players]
+        .filter(Boolean)
+        .filter((name, index, arr) => arr.indexOf(name) === index)
+        .filter(name => name === currentValue || (!selectedInOtherGroups.includes(name) && !selectedInCurrentGroup.includes(name)));
+    };
+
+    const filledSlots = currentGroupPlayers.filter(Boolean).length;
+
+    return (
+      <div className="rounded-3xl border border-blue-200 bg-blue-50 p-4 shadow-inner">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-xl font-black text-blue-900">Thiết lập VĐV Bảng {activeGroup}</div>
+            <div className="text-sm font-semibold text-slate-600">
+              Sau khi bốc thăm thủ công, chọn nhanh 4 VĐV bằng dropdown rồi bấm Lưu. App sẽ dùng danh sách này cho vòng bảng.
+            </div>
+          </div>
+          <div className="rounded-xl bg-white px-3 py-2 text-sm font-black text-blue-800 shadow-sm">
+            Đã chọn {filledSlots}/{PLAYERS_PER_GROUP}
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: PLAYERS_PER_GROUP }, (_, index) => (
+            <div key={index} className="rounded-2xl bg-white p-3 shadow-sm">
+              <label className="mb-1 block text-sm font-black text-slate-700">VĐV {index + 1}</label>
+              <select
+                value={currentGroupPlayers[index] || ''}
+                onChange={e => updateEditingGroupPlayer(activeGroup, index, e.target.value)}
+                className="w-full rounded-xl border border-blue-200 bg-white px-3 py-3 text-base font-bold text-slate-900 outline-none focus:border-blue-600"
+              >
+                <option value="">Chọn VĐV</option>
+                {getDropdownOptions(index).map(name => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-600">
+          Ghi chú: VĐV đã được chọn ở bảng khác sẽ tự ẩn khỏi dropdown để tránh trùng người. Nếu cần đổi bảng, bỏ chọn VĐV ở bảng cũ trước.
+        </div>
+
+        <div className="mt-4 flex flex-wrap justify-end gap-2">
+          <button
+            onClick={() => setEditingGroupAssignments(normalizeGroupAssignments(groupAssignments))}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold text-slate-700"
+          >
+            Hoàn tác
+          </button>
+          <button
+            onClick={() => setShowGroupSetup(false)}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold text-slate-700"
+          >
+            Đóng
+          </button>
+          <button
+            onClick={saveGroupSetup}
+            className="flex items-center gap-2 rounded-xl bg-blue-700 px-5 py-3 font-bold text-white hover:bg-blue-800"
+          >
+            <Save size={16} />
+            Lưu Bảng {activeGroup}
+          </button>
+        </div>
       </div>
-      <div className={classNames('space-y-1.5 text-center font-black text-slate-800', compact ? 'text-xs' : 'text-xs')}>
-        <div>Thua BK1: {thirdPlace.p1 || '-'}</div>
-        <div>Thua BK2: {thirdPlace.p2 || '-'}</div>
+    );
+  };
+
+  const MatchCard = ({ match }) => {
+    const leaderA = Number(match.scoreA) > Number(match.scoreB);
+    const leaderB = Number(match.scoreB) > Number(match.scoreA);
+    const canEdit = adminMode;
+    const setHistoryText = (match.setHistory || []).map(s => `${s.scoreA}-${s.scoreB}`).join(' | ');
+    const calculatedWins = getSetWins(match.setHistory || []);
+    const displaySetA = calculatedWins.setA;
+    const displaySetB = calculatedWins.setB;
+    const isFinished = displaySetA >= SETS_TO_WIN || displaySetB >= SETS_TO_WIN;
+    const winnerName = isFinished ? (displaySetA > displaySetB ? match.playerA : match.playerB) : '';
+    const displayContent = String(match.customContent || '').trim() || (match.content === 'Khác' ? '' : match.content || '');
+
+    const playerAOptions = [match.playerA, ...players]
+      .filter(Boolean)
+      .filter((p, index, arr) => arr.indexOf(p) === index)
+      .filter(p => p !== match.playerB);
+
+    const playerBOptions = [match.playerB, ...players]
+      .filter(Boolean)
+      .filter((p, index, arr) => arr.indexOf(p) === index)
+      .filter(p => p !== match.playerA);
+
+    return (
+      <div
+        className={classNames(
+          'overflow-hidden rounded-3xl border border-white/10 bg-white shadow-2xl',
+          match.status === 'Đang thi đấu' && 'ring-4 ring-red-500/40',
+          isFinished && 'ring-4 ring-emerald-500/50'
+        )}
+      >
+        <div className="flex items-center justify-between bg-slate-950 px-4 py-3 text-white">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-600 text-lg font-black">
+              {match.id}
+            </div>
+            <div className="min-w-0">
+              {canEdit ? (
+                <input
+                  value={match.table}
+                  onChange={e => updateMatch(match.id, 'table', e.target.value)}
+                  className="w-28 bg-transparent text-lg font-black outline-none"
+                />
+              ) : (
+                <div className="text-lg font-black">{match.table}</div>
+              )}
+            </div>
+          </div>
+
+          {canEdit ? (
+            <select
+              value={match.status}
+              onChange={e => updateMatch(match.id, 'status', e.target.value)}
+              className={classNames('rounded-full px-3 py-1 text-sm font-bold outline-none', statusClass(match.status))}
+            >
+              {statusOptions.map(s => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className={classNames('rounded-full px-3 py-1 text-sm font-bold', statusClass(match.status))}>
+              {match.status}
+            </div>
+          )}
+        </div>
+
+        {canEdit ? (
+          <div className="border-b bg-yellow-50 p-3">
+            <div className="grid gap-2 sm:grid-cols-[180px_1fr]">
+              <select
+                value={match.content || ''}
+                onChange={e => updateMatch(match.id, 'content', e.target.value)}
+                className="w-full rounded-xl border border-yellow-300 bg-white px-3 py-3 text-base font-black text-slate-900 outline-none focus:border-red-500"
+              >
+                <option value="">Chọn nội dung thi đấu</option>
+                {matchTypes.map(item => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                defaultValue={match.customContent || ''}
+                onBlur={e => updateMatch(match.id, 'customContent', e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  }
+                }}
+                placeholder="Nội dung khác nếu cần"
+                className="w-full rounded-xl border border-yellow-300 bg-white px-3 py-3 text-base font-bold text-slate-900 outline-none focus:border-red-500"
+              />
+            </div>
+          </div>
+        ) : (
+          displayContent && (
+            <div className="border-b bg-yellow-50 px-4 py-3 text-center">
+              <div className="text-xl font-black uppercase tracking-wide text-red-700">{displayContent}</div>
+            </div>
+          )
+        )}
+
+        <div className="grid grid-cols-[1fr_46px_1fr] bg-white sm:grid-cols-[1fr_64px_1fr]">
+          <div className={classNames('p-3 sm:p-5', leaderA && 'bg-red-50')}>
+            {canEdit ? (
+              <select
+                value={match.playerA}
+                onChange={e => updateMatch(match.id, 'playerA', e.target.value)}
+                className="mt-1 mb-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-lg font-black text-slate-900 outline-none focus:border-red-500 sm:text-xl"
+              >
+                <option value="">Chọn người chơi</option>
+                {playerAOptions.map(p => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="mb-4 min-h-12 text-xl font-black text-slate-950 sm:text-2xl">{match.playerA}</div>
+            )}
+
+            <div className="text-left sm:text-right">
+              <div className="text-xs font-bold text-slate-500">ĐIỂM</div>
+              <div className="flex items-center gap-2 sm:justify-end">
+                {canEdit && (
+                  <button disabled={isFinished} className="rounded-lg border px-2 py-1 disabled:opacity-40" onClick={() => changePoint(match.id, 'A', -1)}>
+                    <Minus size={14} />
+                  </button>
+                )}
+                <div className={classNames('min-w-16 text-center text-6xl font-black tracking-tight sm:text-7xl', leaderA ? 'text-red-600' : 'text-slate-950')}>
+                  {match.scoreA}
+                </div>
+                {canEdit && (
+                  <button disabled={isFinished} className="rounded-lg bg-red-600 px-2 py-1 text-white disabled:opacity-40" onClick={() => changePoint(match.id, 'A', 1)}>
+                    <Plus size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center justify-center bg-slate-100 px-2 text-slate-500">
+            <div className="text-lg font-black sm:text-2xl">VS</div>
+            <div className="mt-2 text-center text-xs font-black text-slate-700">{displaySetA}-{displaySetB}</div>
+          </div>
+
+          <div className={classNames('p-3 sm:p-5', leaderB && 'bg-blue-50')}>
+            {canEdit ? (
+              <select
+                value={match.playerB}
+                onChange={e => updateMatch(match.id, 'playerB', e.target.value)}
+                className="mt-1 mb-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-right text-lg font-black text-slate-900 outline-none focus:border-blue-500 sm:text-xl"
+              >
+                <option value="">Chọn người chơi</option>
+                {playerBOptions.map(p => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="mb-4 min-h-12 text-right text-xl font-black text-slate-950 sm:text-2xl">{match.playerB}</div>
+            )}
+
+            <div>
+              <div className="text-xs font-bold text-slate-500">ĐIỂM</div>
+              <div className="flex items-center gap-2">
+                {canEdit && (
+                  <button disabled={isFinished} className="rounded-lg border px-2 py-1 disabled:opacity-40" onClick={() => changePoint(match.id, 'B', -1)}>
+                    <Minus size={14} />
+                  </button>
+                )}
+                <div className={classNames('min-w-16 text-center text-6xl font-black tracking-tight sm:text-7xl', leaderB ? 'text-blue-600' : 'text-slate-950')}>
+                  {match.scoreB}
+                </div>
+                {canEdit && (
+                  <button disabled={isFinished} className="rounded-lg bg-blue-600 px-2 py-1 text-white disabled:opacity-40" onClick={() => changePoint(match.id, 'B', 1)}>
+                    <Plus size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {(match.setHistory || []).length > 0 && (
+          <div className="border-t bg-yellow-50 px-4 py-3 text-center">
+            <div className="text-sm font-black uppercase tracking-wider text-slate-600">Lịch sử set</div>
+            <div className="mt-2 rounded-xl bg-white px-4 py-3 text-2xl font-black tracking-wider text-red-700 shadow">{setHistoryText}</div>
+            {isFinished && winnerName && (
+              <div className="mt-3 rounded-2xl bg-emerald-600 px-4 py-3 text-2xl font-black text-white shadow">
+                Thắng trận: {winnerName} ({displaySetA}-{displaySetB})
+              </div>
+            )}
+          </div>
+        )}
+
+        {canEdit && (
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t bg-slate-50 p-3">
+            <button
+              disabled={isFinished}
+              className="flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+              onClick={() => finishSet(match.id)}
+            >
+              <CheckCircle2 size={15} />
+              Sang Set Tiếp Theo
+            </button>
+            <button className="flex items-center gap-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-white" onClick={() => resetScore(match.id)}>
+              <RotateCcw size={15} />
+              Reset
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-red-700 via-slate-950 to-blue-900 p-2 text-slate-950 sm:p-5">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-5 overflow-hidden rounded-3xl bg-white/95 shadow-2xl">
+          <div className="bg-gradient-to-r from-red-700 via-red-600 to-yellow-400 px-5 py-5 text-white">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0 flex-1">
+                {adminMode ? (
+                  <input
+                    value={data.clubTitle}
+                    onChange={e => updateField('clubTitle', e.target.value)}
+                    className="w-full bg-transparent text-lg font-black tracking-wide outline-none sm:text-2xl md:text-4xl"
+                  />
+                ) : (
+                  <h1 className="text-lg font-black tracking-wide sm:text-2xl md:text-4xl">{data.clubTitle}</h1>
+                )}
+                {adminMode ? (
+                  <input
+                    value={data.eventTitle}
+                    onChange={e => updateField('eventTitle', e.target.value)}
+                    className="mt-1 w-full bg-transparent text-base font-black tracking-wide outline-none sm:text-xl md:text-3xl"
+                  />
+                ) : (
+                  <h2 className="mt-1 text-base font-black tracking-wide sm:text-xl md:text-3xl">{data.eventTitle}</h2>
+                )}
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm font-semibold text-yellow-100">
+                  <span className="flex items-center gap-2">
+                    <Clock size={16} /> {data.note}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {connected ? <Wifi size={16} /> : <WifiOff size={16} />}{' '}
+                    {connected ? 'Realtime Online' : hasFirebaseConfig ? 'Đang kết nối' : 'Demo local'}
+                  </span>
+                  <span>Cập nhật: {lastUpdated}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto whitespace-nowrap pb-2">
+                <button
+                  onClick={handleAdminToggle}
+                  className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-slate-950 hover:bg-yellow-50"
+                >
+                  {adminMode ? <ShieldCheck size={16} /> : <Eye size={16} />}
+                  {adminMode ? 'Thoát Admin' : 'Admin'}
+                </button>
+                {adminMode && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      className="hidden"
+                      onChange={importPlayersFromExcel}
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-blue-700 hover:bg-yellow-50"
+                    >
+                      <Upload size={16} />
+                      Import VĐV Excel
+                    </button>
+                  </>
+                )}
+                {adminMode && (
+                  <button
+                    onClick={() => setShowPlayerManager(!showPlayerManager)}
+                    className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-emerald-700 hover:bg-yellow-50"
+                  >
+                    <UserPlus size={16} />
+                    Quản lý VĐV
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 p-3 sm:p-4">
+              <div className="sticky top-2 z-30 grid grid-cols-2 gap-2 rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-slate-200 sm:grid-cols-4">
+                <button
+                  onClick={() => setActivePage('live')}
+                  className={classNames(
+                    'w-full rounded-xl px-2 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
+                    activePage === 'live'
+                      ? 'bg-red-600 text-white'
+                      : 'border border-slate-300 bg-white text-slate-700'
+                  )}
+                >
+                  Live Score
+                </button>
+
+                <button
+                  onClick={() => setActivePage('group')}
+                  className={classNames(
+                    'w-full rounded-xl px-2 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
+                    activePage === 'group'
+                      ? 'bg-blue-700 text-white'
+                      : 'border border-slate-300 bg-white text-slate-700'
+                  )}
+                >
+                  Vòng bảng
+                </button>
+
+                <button
+                  onClick={() => setActivePage('knockout')}
+                  className={classNames(
+                    'w-full rounded-xl px-2 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
+                    activePage === 'knockout'
+                      ? 'bg-emerald-700 text-white'
+                      : 'border border-slate-300 bg-white text-slate-700'
+                  )}
+                >
+                  Knock Out Serie A
+                </button>
+
+                <button
+                  onClick={() => setActivePage('knockoutB')}
+                  className={classNames(
+                    'w-full rounded-xl px-2 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
+                    activePage === 'knockoutB'
+                      ? 'bg-purple-700 text-white'
+                      : 'border border-slate-300 bg-white text-slate-700'
+                  )}
+                >
+                  Knock Out Serie B
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
+                  <Edit3 size={16} />
+                  {adminMode
+                    ? activePage === 'live'
+                      ? 'Chỉ hiển thị 4 bàn cố định. Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp.'
+                      : activePage === 'group'
+                      ? 'Vòng bảng có thể chọn VĐV bằng dropdown sau khi bốc thăm, nhập kết quả theo từng ô đối đầu và tự tính xếp hạng.'
+                      : activePage === 'knockout'
+                      ? 'Knock Out Serie A nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
+                      : 'Knock Out Serie B nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
+                    : activePage === 'live'
+                    ? 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'
+                    : activePage === 'group'
+                    ? 'Đây là trang xem vòng bảng. Danh sách VĐV và kết quả sẽ tự cập nhật realtime.'
+                    : activePage === 'knockout'
+                    ? 'Đây là trang xem sơ đồ Knock Out Serie A. Kết quả sẽ tự cập nhật realtime.'
+                    : 'Đây là trang xem sơ đồ Knock Out Serie B. Kết quả sẽ tự cập nhật realtime.'}
+                </div>
+
+                {activePage === 'live' && (
+                  <div className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700">
+                    4 bàn cố định
+                  </div>
+                )}
+              </div>
+
+              {adminMode && showPlayerManager && <PlayerManagerPanel />}
+            </div>
+        </div>
+
+        {activePage === 'live' ? (
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+            {visibleMatches.map(match => (
+              <MatchCard key={match.id} match={match} />
+            ))}
+          </div>
+        ) : activePage === 'group' ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap gap-2">
+                {groupTabs.map(group => (
+                  <button
+                    key={group}
+                    onClick={() => setActiveGroup(group)}
+                    className={classNames(
+                      'w-full rounded-xl px-2 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
+                      activeGroup === group
+                        ? 'bg-blue-700 text-white'
+                        : 'border border-slate-300 bg-white text-slate-700'
+                    )}
+                  >
+                    Bảng {group}
+                  </button>
+                ))}
+              </div>
+              {adminMode && (
+                <button
+                  onClick={() => {
+                    setEditingGroupAssignments(normalizeGroupAssignments(groupAssignments));
+                    setShowGroupSetup(!showGroupSetup);
+                  }}
+                  className="rounded-xl bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-800"
+                >
+                  Thiết lập VĐV Bảng {activeGroup}
+                </button>
+              )}
+            </div>
+            {adminMode && showGroupSetup && <GroupSetupPanel />}
+
+            <GroupStage
+              key={activeGroup}
+              database={database}
+              adminMode={adminMode}
+              dbPath={`clb31tq/group-stage/group${activeGroup}`}
+              groupCode={activeGroup}
+              groupName={`Bảng ${activeGroup}`}
+              initialPlayers={activeGroupPlayers}
+            />
+          </div>
+        ) : activePage === 'knockout' ? (
+          <Knockout
+            database={database}
+            adminMode={adminMode}
+            dbPath="clb31tq/knockout/serieA16"
+            title="SERIE A"
+            bracketSize={16}
+          />
+        ) : (
+          <Knockout
+            database={database}
+            adminMode={adminMode}
+            dbPath="clb31tq/knockout/serieB8"
+            title="SERIE B"
+            bracketSize={8}
+          />
+        )}
+
+        <div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
+          <div className="flex items-center justify-center gap-2">
+            <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định và có thêm trang vòng bảng, Knock Out Serie A và Knock Out Serie B.
+          </div>
+        </div>
       </div>
     </div>
   );

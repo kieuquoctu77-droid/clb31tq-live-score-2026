@@ -67,27 +67,39 @@ function cloneData(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function normalizeMatch(match = {}) {
+  return {
+    ...match,
+    score1: match.score1 ?? '',
+    score2: match.score2 ?? '',
+  };
+}
+
+function normalizeRound(round = {}) {
+  return Object.fromEntries(Object.entries(round).map(([key, match]) => [key, normalizeMatch(match)]));
+}
+
 function prepareKnockoutData(value, bracketSize = 16) {
   const defaultData = createDefaultKnockoutData(bracketSize);
   return {
     ...defaultData,
     ...(value || {}),
-    round16: {
+    round16: normalizeRound({
       ...defaultData.round16,
       ...(value?.round16 || {}),
-    },
-    quarter: {
+    }),
+    quarter: normalizeRound({
       ...defaultData.quarter,
       ...(value?.quarter || {}),
-    },
-    semi: {
+    }),
+    semi: normalizeRound({
       ...defaultData.semi,
       ...(value?.semi || {}),
-    },
-    final: {
+    }),
+    final: normalizeRound({
       ...defaultData.final,
       ...(value?.final || {}),
-    },
+    }),
     thirdPlace: {
       ...defaultData.thirdPlace,
       ...(value?.thirdPlace || {}),
@@ -115,8 +127,8 @@ export default function Knockout({
   const storageKey = useMemo(() => `clb31tq-knockout-${dbPath}`, [dbPath]);
   const [data, setData] = useState(defaultData);
   const [connected, setConnected] = useState(false);
-  const ROW_HEIGHT_16 = 140;
-  const ROW_HEIGHT_8 = 150;
+  const ROW_HEIGHT_16 = 172;
+  const ROW_HEIGHT_8 = 172;
 
   useEffect(() => {
     setData(defaultData);
@@ -254,6 +266,16 @@ export default function Knockout({
     await saveData(next);
   };
 
+  const updateScore = async (roundKey, matchId, scoreKey, value) => {
+    if (!adminMode) return;
+
+    const next = prepareKnockoutData(cloneData(data), normalizedBracketSize);
+    const match = next[roundKey][matchId];
+    const cleanedValue = String(value || '').replace(/\D/g, '').slice(0, 2);
+    match[scoreKey] = cleanedValue;
+    await saveData(next);
+  };
+
   const resetKnockout = async () => {
     if (!adminMode) return;
     const confirmReset = window.confirm(`Reset toàn bộ sơ đồ Knock-out ${title}?`);
@@ -301,6 +323,7 @@ export default function Knockout({
           adminMode={adminMode}
           chooseWinner={chooseWinner}
           updatePlayer={updatePlayer}
+          updateScore={updateScore}
         />
       ) : (
         <SerieABracket
@@ -312,6 +335,7 @@ export default function Knockout({
           adminMode={adminMode}
           chooseWinner={chooseWinner}
           updatePlayer={updatePlayer}
+          updateScore={updateScore}
         />
       )}
 
@@ -324,7 +348,7 @@ export default function Knockout({
   );
 }
 
-function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer }) {
+function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore }) {
   return (
     <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-red-100">
       <div className="min-w-[1080px]">
@@ -352,6 +376,7 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
                 adminMode={adminMode}
                 onWinner={chooseWinner}
                 onUpdatePlayer={updatePlayer}
+                onUpdateScore={updateScore}
                 size="small"
               />
               <RightConnector />
@@ -372,6 +397,7 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
                 adminMode={adminMode}
                 onWinner={chooseWinner}
                 onUpdatePlayer={updatePlayer}
+                onUpdateScore={updateScore}
                 color="blue"
               />
               <RightConnector />
@@ -392,6 +418,7 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
                 adminMode={adminMode}
                 onWinner={chooseWinner}
                 onUpdatePlayer={updatePlayer}
+                onUpdateScore={updateScore}
                 color="emerald"
               />
               <RightConnector />
@@ -408,6 +435,7 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
                 adminMode={adminMode}
                 onWinner={chooseWinner}
                 onUpdatePlayer={updatePlayer}
+                onUpdateScore={updateScore}
                 color="yellow"
                 finalMatch
               />
@@ -421,7 +449,7 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
   );
 }
 
-function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer }) {
+function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore }) {
   return (
     <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-emerald-100">
       <div className="min-w-[820px]">
@@ -448,6 +476,7 @@ function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode
                 adminMode={adminMode}
                 onWinner={chooseWinner}
                 onUpdatePlayer={updatePlayer}
+                onUpdateScore={updateScore}
                 color="green"
               />
               <RightConnector />
@@ -468,6 +497,7 @@ function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode
                 adminMode={adminMode}
                 onWinner={chooseWinner}
                 onUpdatePlayer={updatePlayer}
+                onUpdateScore={updateScore}
                 color="emerald"
               />
               <RightConnector />
@@ -484,6 +514,7 @@ function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode
                 adminMode={adminMode}
                 onWinner={chooseWinner}
                 onUpdatePlayer={updatePlayer}
+                onUpdateScore={updateScore}
                 color="yellow"
                 finalMatch
               />
@@ -538,6 +569,7 @@ function VerticalMatchCard({
   adminMode,
   onWinner,
   onUpdatePlayer,
+  onUpdateScore,
   color = 'red',
   finalMatch = false,
   size = 'normal',
@@ -572,6 +604,8 @@ function VerticalMatchCard({
           disabled={!String(match.p1 || '').trim() || !adminMode}
           onClick={() => onWinner(roundKey, matchId, match.p1)}
           onChange={value => onUpdatePlayer(roundKey, matchId, 'p1', value)}
+          score={match.score1}
+          onScoreChange={value => onUpdateScore(roundKey, matchId, 'score1', value)}
           adminMode={adminMode}
           placeholder="VĐV 1"
           compact={size === 'small'}
@@ -582,6 +616,8 @@ function VerticalMatchCard({
           disabled={!String(match.p2 || '').trim() || !adminMode}
           onClick={() => onWinner(roundKey, matchId, match.p2)}
           onChange={value => onUpdatePlayer(roundKey, matchId, 'p2', value)}
+          score={match.score2}
+          onScoreChange={value => onUpdateScore(roundKey, matchId, 'score2', value)}
           adminMode={adminMode}
           placeholder="VĐV 2"
           compact={size === 'small'}
@@ -591,7 +627,20 @@ function VerticalMatchCard({
   );
 }
 
-function PlayerRow({ value, selected, disabled, onClick, onChange, adminMode, placeholder, compact = false }) {
+function PlayerRow({
+  value,
+  selected,
+  disabled,
+  onClick,
+  onChange,
+  score,
+  onScoreChange,
+  adminMode,
+  placeholder,
+  compact = false,
+}) {
+  const hasScore = String(score ?? '').trim() !== '';
+
   return (
     <div
       className={classNames(
@@ -612,6 +661,21 @@ function PlayerRow({ value, selected, disabled, onClick, onChange, adminMode, pl
               selected ? 'text-white placeholder:text-emerald-100' : 'text-slate-900 placeholder:text-slate-400'
             )}
           />
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={2}
+            value={score ?? ''}
+            onChange={e => onScoreChange(e.target.value)}
+            placeholder="0"
+            title="Nhập số set thắng, ví dụ 3"
+            className={classNames(
+              'h-8 w-10 shrink-0 rounded-lg border text-center text-sm font-black outline-none',
+              selected
+                ? 'border-white/60 bg-white text-emerald-700 placeholder:text-emerald-300'
+                : 'border-slate-300 bg-slate-50 text-slate-900 placeholder:text-slate-400'
+            )}
+          />
           <button
             type="button"
             onClick={onClick}
@@ -629,7 +693,19 @@ function PlayerRow({ value, selected, disabled, onClick, onChange, adminMode, pl
           </button>
         </div>
       ) : (
-        <div className={classNames('font-black', compact ? 'text-xs' : 'text-sm')}>{value || '-'}</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className={classNames('min-w-0 flex-1 truncate font-black', compact ? 'text-xs' : 'text-sm')}>
+            {value || '-'}
+          </div>
+          <div
+            className={classNames(
+              'shrink-0 rounded-lg px-2 py-0.5 text-center text-xs font-black',
+              selected ? 'bg-white text-emerald-700' : hasScore ? 'bg-slate-100 text-slate-800' : 'bg-slate-50 text-slate-400'
+            )}
+          >
+            {hasScore ? score : '-'}
+          </div>
+        </div>
       )}
     </div>
   );

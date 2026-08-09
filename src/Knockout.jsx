@@ -619,23 +619,26 @@ function VerticalMatchCard({
         <PlayerRow
           value={match.p1}
           selected={match.winner === match.p1}
-          disabled={!String(match.p1 || '').trim() || !adminMode}
-          onClick={() => onWinner(roundKey, matchId, match.p1)}
           onChange={value => onUpdatePlayer(roundKey, matchId, 'p1', value)}
-          score={match.score1}
-          onScoreChange={value => onUpdateScore(roundKey, matchId, 'score1', value)}
           adminMode={adminMode}
           placeholder="VĐV 1"
           compact={size === 'small'}
         />
+        <ScoreInputRow
+          score1={match.score1}
+          score2={match.score2}
+          winner={match.winner}
+          p1={match.p1}
+          p2={match.p2}
+          adminMode={adminMode}
+          compact={size === 'small'}
+          onScore1Change={value => onUpdateScore(roundKey, matchId, 'score1', value)}
+          onScore2Change={value => onUpdateScore(roundKey, matchId, 'score2', value)}
+        />
         <PlayerRow
           value={match.p2}
           selected={match.winner === match.p2}
-          disabled={!String(match.p2 || '').trim() || !adminMode}
-          onClick={() => onWinner(roundKey, matchId, match.p2)}
           onChange={value => onUpdatePlayer(roundKey, matchId, 'p2', value)}
-          score={match.score2}
-          onScoreChange={value => onUpdateScore(roundKey, matchId, 'score2', value)}
           adminMode={adminMode}
           placeholder="VĐV 2"
           compact={size === 'small'}
@@ -645,74 +648,91 @@ function VerticalMatchCard({
   );
 }
 
-function PlayerRow({
-  value,
-  selected,
-  disabled,
-  onClick,
-  onChange,
-  score,
-  onScoreChange,
-  adminMode,
-  placeholder,
-  compact = false,
-}) {
-  const hasScore = String(score ?? '').trim() !== '';
-
+function PlayerRow({ value, selected, onChange, adminMode, placeholder, compact = false }) {
   return (
     <div
       className={classNames(
         'rounded-xl border transition-all',
-        compact ? 'px-2 py-1' : 'px-2.5 py-1.5',
+        compact ? 'px-2 py-1.5' : 'px-2.5 py-2',
         selected ? 'border-emerald-700 bg-emerald-600 text-white shadow-md' : 'border-slate-200 bg-white text-slate-900'
       )}
     >
       {adminMode ? (
-        <div className="flex items-center gap-2">
-          <input
-            value={value || ''}
-            onChange={e => onChange(e.target.value)}
-            placeholder={placeholder}
-            className={classNames(
-              'min-w-0 flex-1 bg-transparent font-black outline-none',
-              compact ? 'text-xs' : 'text-sm',
-              selected ? 'text-white placeholder:text-emerald-100' : 'text-slate-900 placeholder:text-slate-400'
-            )}
-          />
+        <input
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={classNames(
+            'w-full bg-transparent font-black outline-none',
+            compact ? 'text-xs' : 'text-sm',
+            selected ? 'text-white placeholder:text-emerald-100' : 'text-slate-900 placeholder:text-slate-400'
+          )}
+        />
+      ) : (
+        <div className={classNames('truncate font-black', compact ? 'text-xs' : 'text-sm')}>
+          {value || '-'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScoreInputRow({ score1, score2, winner, p1, p2, adminMode, compact = false, onScore1Change, onScore2Change }) {
+  const hasScore1 = String(score1 ?? '').trim() !== '';
+  const hasScore2 = String(score2 ?? '').trim() !== '';
+  const p1Won = winner && winner === p1;
+  const p2Won = winner && winner === p2;
+
+  const scoreBoxClass = isWinner =>
+    classNames(
+      'rounded-xl border text-center font-black outline-none transition-all',
+      compact ? 'h-8 w-11 text-sm' : 'h-9 w-12 text-base',
+      isWinner
+        ? 'border-emerald-300 bg-gradient-to-r from-emerald-500 to-emerald-700 text-white shadow placeholder:text-emerald-100'
+        : 'border-slate-300 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white'
+    );
+
+  const scoreBadgeClass = isWinner =>
+    classNames(
+      'min-w-[42px] rounded-xl px-3 py-1 text-center font-black',
+      compact ? 'text-sm' : 'text-base',
+      isWinner
+        ? 'bg-gradient-to-r from-emerald-500 to-emerald-700 text-white shadow'
+        : 'bg-slate-100 text-slate-700'
+    );
+
+  return (
+    <div className="flex items-center justify-center gap-2 rounded-xl bg-slate-100 px-2 py-2">
+      {adminMode ? (
+        <>
           <input
             type="text"
             inputMode="numeric"
             maxLength={2}
-            value={score ?? ''}
-            onChange={e => onScoreChange(e.target.value)}
+            value={score1 ?? ''}
+            onChange={e => onScore1Change(e.target.value)}
             placeholder="0"
-            title="Nhập số set thắng, ví dụ 3"
-            className={classNames(
-              'h-9 w-12 shrink-0 rounded-xl border text-center text-base font-black outline-none transition-all',
-              selected
-                ? 'border-emerald-300 bg-gradient-to-r from-emerald-500 to-emerald-700 text-white shadow placeholder:text-emerald-100'
-                : 'border-slate-300 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white'
-            )}
+            title="Điểm VĐV 1"
+            className={scoreBoxClass(p1Won)}
           />
-        </div>
+          <div className="text-base font-black text-slate-500">-</div>
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={2}
+            value={score2 ?? ''}
+            onChange={e => onScore2Change(e.target.value)}
+            placeholder="0"
+            title="Điểm VĐV 2"
+            className={scoreBoxClass(p2Won)}
+          />
+        </>
       ) : (
-        <div className="flex items-center justify-between gap-2">
-          <div className={classNames('min-w-0 flex-1 truncate font-black', compact ? 'text-xs' : 'text-sm')}>
-            {value || '-'}
-          </div>
-          <div
-            className={classNames(
-              'min-w-[40px] shrink-0 rounded-xl px-2 py-1 text-center text-sm font-black',
-              selected
-                ? 'bg-gradient-to-r from-emerald-500 to-emerald-700 text-white shadow'
-                : hasScore
-                ? 'bg-slate-100 text-slate-700'
-                : 'bg-slate-50 text-slate-400'
-            )}
-          >
-            {hasScore ? score : '-'}
-          </div>
-        </div>
+        <>
+          <div className={scoreBadgeClass(p1Won)}>{hasScore1 ? score1 : '-'}</div>
+          <div className="text-base font-black text-slate-500">-</div>
+          <div className={scoreBadgeClass(p2Won)}>{hasScore2 ? score2 : '-'}</div>
+        </>
       )}
     </div>
   );

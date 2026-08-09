@@ -127,7 +127,6 @@ function formatPlayerLabel(name, rank) {
 export default function App() {
   const [data, setData] = useState(defaultData);
   const [players, setPlayers] = useState(defaultPlayers);
-  const [tvMode, setTvMode] = useState(false);
   const [activePage, setActivePage] = useState('live');
   const [activeGroup, setActiveGroup] = useState('A');
   const [adminMode, setAdminMode] = useState(getInitialAdminMode);
@@ -874,7 +873,7 @@ export default function App() {
   const MatchCard = ({ match }) => {
     const leaderA = Number(match.scoreA) > Number(match.scoreB);
     const leaderB = Number(match.scoreB) > Number(match.scoreA);
-    const canEdit = adminMode && !tvMode;
+    const canEdit = adminMode;
     const setHistoryText = (match.setHistory || []).map(s => `${s.scoreA}-${s.scoreB}`).join(' | ');
     const calculatedWins = getSetWins(match.setHistory || []);
     const displaySetA = calculatedWins.setA;
@@ -1097,7 +1096,7 @@ export default function App() {
           <div className="bg-gradient-to-r from-red-700 via-red-600 to-yellow-400 px-5 py-5 text-white">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0 flex-1">
-                {adminMode && !tvMode ? (
+                {adminMode ? (
                   <input
                     value={data.clubTitle}
                     onChange={e => updateField('clubTitle', e.target.value)}
@@ -1106,7 +1105,7 @@ export default function App() {
                 ) : (
                   <h1 className="text-2xl font-black tracking-wide md:text-4xl">{data.clubTitle}</h1>
                 )}
-                {adminMode && !tvMode ? (
+                {adminMode ? (
                   <input
                     value={data.eventTitle}
                     onChange={e => updateField('eventTitle', e.target.value)}
@@ -1127,7 +1126,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex gap-2 overflow-x-auto whitespace-nowrap pb-2">
                 <button
                   onClick={handleAdminToggle}
                   className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-slate-950 hover:bg-yellow-50"
@@ -1135,14 +1134,7 @@ export default function App() {
                   {adminMode ? <ShieldCheck size={16} /> : <Eye size={16} />}
                   {adminMode ? 'Thoát Admin' : 'Admin'}
                 </button>
-                <button
-                  onClick={() => setTvMode(!tvMode)}
-                  className="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 font-bold text-white hover:bg-slate-800"
-                >
-                  <Monitor size={16} />
-                  {tvMode ? 'Tắt màn hình lớn' : 'Màn hình lớn'}
-                </button>
-                {adminMode && !tvMode && (
+                {adminMode && (
                   <>
                     <input
                       ref={fileInputRef}
@@ -1160,7 +1152,7 @@ export default function App() {
                     </button>
                   </>
                 )}
-                {adminMode && !tvMode && (
+                {adminMode && (
                   <button
                     onClick={() => setShowPlayerManager(!showPlayerManager)}
                     className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-emerald-700 hover:bg-yellow-50"
@@ -1173,8 +1165,7 @@ export default function App() {
             </div>
           </div>
 
-          {!tvMode && (
-            <div className="space-y-3 p-4">
+          <div className="space-y-3 p-4">
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setActivePage('live')}
@@ -1252,9 +1243,8 @@ export default function App() {
                 )}
               </div>
 
-              {adminMode && !tvMode && showPlayerManager && <PlayerManagerPanel />}
+              {adminMode && showPlayerManager && <PlayerManagerPanel />}
             </div>
-          )}
         </div>
 
         {activePage === 'live' ? (
@@ -1282,7 +1272,7 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              {adminMode && !tvMode && (
+              {adminMode && (
                 <button
                   onClick={() => {
                     setEditingGroupAssignments(normalizeGroupAssignments(groupAssignments));
@@ -1294,7 +1284,7 @@ export default function App() {
                 </button>
               )}
             </div>
-            {adminMode && !tvMode && showGroupSetup && <GroupSetupPanel />}
+            {adminMode && showGroupSetup && <GroupSetupPanel />}
 
             <GroupStage
               key={activeGroup}

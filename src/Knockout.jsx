@@ -271,8 +271,26 @@ export default function Knockout({
 
     const next = prepareKnockoutData(cloneData(data), normalizedBracketSize);
     const match = next[roundKey][matchId];
+    const oldWinner = match.winner;
     const cleanedValue = String(value || '').replace(/\D/g, '').slice(0, 2);
     match[scoreKey] = cleanedValue;
+
+    const score1Text = String(match.score1 ?? '').trim();
+    const score2Text = String(match.score2 ?? '').trim();
+    const hasBothScores = score1Text !== '' && score2Text !== '';
+    const score1 = Number(score1Text);
+    const score2 = Number(score2Text);
+    const canAutoPickWinner = hasBothScores && score1 !== score2 && match.p1 && match.p2;
+
+    if (canAutoPickWinner) {
+      const nextWinner = score1 > score2 ? match.p1 : match.p2;
+      match.winner = nextWinner;
+      pushWinnerForward(next, matchId, nextWinner, oldWinner);
+    } else if (oldWinner) {
+      match.winner = '';
+      clearDownstreamIfNeeded(next, oldWinner);
+    }
+
     await saveData(next);
   };
 
@@ -295,7 +313,7 @@ export default function Knockout({
             🏓 SƠ ĐỒ KNOCK OUT {title} - {normalizedBracketSize} VĐV
           </div>
           <div className="mt-1 text-sm font-bold text-slate-500">
-            Bấm “Thắng” để tự động đẩy VĐV lên nhánh tiếp theo.
+            Nhập tỷ số, hệ thống tự chọn người thắng và đẩy VĐV lên nhánh tiếp theo.
           </div>
           <div className="mt-1 text-xs font-bold text-slate-400">
             Trạng thái: {connected ? 'Realtime Firebase' : 'Local'}
@@ -592,7 +610,7 @@ function VerticalMatchCard({
         {match.winner && (
           <div className="flex items-center gap-1 text-[11px] font-black text-emerald-700">
             <CheckCircle2 size={13} />
-            Đã chọn
+            Thắng
           </div>
         )}
       </div>
@@ -670,27 +688,12 @@ function PlayerRow({
             placeholder="0"
             title="Nhập số set thắng, ví dụ 3"
             className={classNames(
-              'h-8 w-10 shrink-0 rounded-lg border text-center text-sm font-black outline-none',
+              'h-9 w-12 shrink-0 rounded-xl border text-center text-base font-black outline-none transition-all',
               selected
                 ? 'border-emerald-300 bg-gradient-to-r from-emerald-500 to-emerald-700 text-white shadow placeholder:text-emerald-100'
-                : 'border-slate-300 bg-slate-50 text-slate-900 placeholder:text-slate-400'
+                : 'border-slate-300 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white'
             )}
           />
-          <button
-            type="button"
-            onClick={onClick}
-            disabled={disabled}
-            className={classNames(
-              'shrink-0 rounded-lg px-2 py-0.5 text-[11px] font-black',
-              selected
-                ? 'bg-white text-emerald-700'
-                : disabled
-                ? 'bg-slate-200 text-slate-400'
-                : 'bg-emerald-600 text-white hover:bg-emerald-700'
-            )}
-          >
-            Thắng
-          </button>
         </div>
       ) : (
         <div className="flex items-center justify-between gap-2">
@@ -699,7 +702,7 @@ function PlayerRow({
           </div>
           <div
             className={classNames(
-              'shrink-0 rounded-lg px-2 py-0.5 text-center text-xs font-black',
+              'min-w-[40px] shrink-0 rounded-xl px-2 py-1 text-center text-sm font-black',
               selected
                 ? 'bg-gradient-to-r from-emerald-500 to-emerald-700 text-white shadow'
                 : hasScore

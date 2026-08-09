@@ -1089,7 +1089,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-700 via-slate-950 to-blue-900 p-2 text-slate-950 sm:p-5">
+    <div className="min-h-screen bg-gradient-to-br from-red-700 via-slate-950 to-blue-900 p-2 pb-24 text-slate-950 sm:p-5 sm:pb-5">
       <div className="mx-auto max-w-7xl">
         <div className="mb-5 overflow-hidden rounded-3xl bg-white/95 shadow-2xl">
           <div className="bg-gradient-to-r from-red-700 via-red-600 to-yellow-400 px-5 py-5 text-white">
@@ -1165,7 +1165,7 @@ export default function App() {
           </div>
 
           <div className="space-y-3 p-3 sm:p-4">
-              <div className="sticky top-2 z-30 grid grid-cols-2 gap-2 rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-slate-200 sm:grid-cols-4">
+              <div className="sticky top-2 z-30 hidden grid-cols-4 gap-2 rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-slate-200 md:grid">
                 <button
                   onClick={() => setActivePage('live')}
                   className={classNames(
@@ -1312,6 +1312,51 @@ export default function App() {
             bracketSize={8}
           />
         )}
+
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur md:hidden">
+          <div className="grid grid-cols-4 gap-1">
+            <button
+              type="button"
+              onClick={() => setActivePage('live')}
+              className={classNames(
+                'rounded-xl px-1 py-2 text-[11px] font-black leading-tight',
+                activePage === 'live' ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-700'
+              )}
+            >
+              Live<br />Score
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePage('group')}
+              className={classNames(
+                'rounded-xl px-1 py-2 text-[11px] font-black leading-tight',
+                activePage === 'group' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'
+              )}
+            >
+              Vòng<br />bảng
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePage('knockout')}
+              className={classNames(
+                'rounded-xl px-1 py-2 text-[11px] font-black leading-tight',
+                activePage === 'knockout' ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-700'
+              )}
+            >
+              Serie<br />A
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePage('knockoutB')}
+              className={classNames(
+                'rounded-xl px-1 py-2 text-[11px] font-black leading-tight',
+                activePage === 'knockoutB' ? 'bg-purple-700 text-white' : 'bg-slate-100 text-slate-700'
+              )}
+            >
+              Serie<br />B
+            </button>
+          </div>
+        </div>
 
         <div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
           <div className="flex items-center justify-center gap-2">

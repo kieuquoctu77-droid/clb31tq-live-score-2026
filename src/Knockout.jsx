@@ -672,7 +672,7 @@ function PlayerRow({
             className={classNames(
               'h-8 w-10 shrink-0 rounded-lg border text-center text-sm font-black outline-none',
               selected
-                ? 'border-white/60 bg-white text-emerald-700 placeholder:text-emerald-300'
+                ? 'border-emerald-300 bg-gradient-to-r from-emerald-500 to-emerald-700 text-white shadow placeholder:text-emerald-100'
                 : 'border-slate-300 bg-slate-50 text-slate-900 placeholder:text-slate-400'
             )}
           />
@@ -700,7 +700,11 @@ function PlayerRow({
           <div
             className={classNames(
               'shrink-0 rounded-lg px-2 py-0.5 text-center text-xs font-black',
-              selected ? 'bg-white text-emerald-700' : hasScore ? 'bg-slate-100 text-slate-800' : 'bg-slate-50 text-slate-400'
+              selected
+                ? 'bg-gradient-to-r from-emerald-500 to-emerald-700 text-white shadow'
+                : hasScore
+                ? 'bg-slate-100 text-slate-700'
+                : 'bg-slate-50 text-slate-400'
             )}
           >
             {hasScore ? score : '-'}

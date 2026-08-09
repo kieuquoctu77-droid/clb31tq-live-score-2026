@@ -1089,7 +1089,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-700 via-slate-950 to-blue-900 p-2 pb-24 text-slate-950 sm:p-5 sm:pb-5">
+    <div className="min-h-screen bg-gradient-to-br from-red-700 via-slate-950 to-blue-900 p-2 text-slate-950 sm:p-5">
       <div className="mx-auto max-w-7xl">
         <div className="mb-5 overflow-hidden rounded-3xl bg-white/95 shadow-2xl">
           <div className="bg-gradient-to-r from-red-700 via-red-600 to-yellow-400 px-5 py-5 text-white">
@@ -1165,11 +1165,11 @@ export default function App() {
           </div>
 
           <div className="space-y-3 p-3 sm:p-4">
-              <div className="sticky top-2 z-30 hidden grid-cols-4 gap-2 rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-slate-200 md:grid">
+              <div className="sticky top-2 z-30 flex gap-2 overflow-x-auto whitespace-nowrap rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-slate-200">
                 <button
                   onClick={() => setActivePage('live')}
                   className={classNames(
-                    'w-full rounded-xl px-2 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
+                    'shrink-0 rounded-xl px-3 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
                     activePage === 'live'
                       ? 'bg-red-600 text-white'
                       : 'border border-slate-300 bg-white text-slate-700'
@@ -1181,7 +1181,7 @@ export default function App() {
                 <button
                   onClick={() => setActivePage('group')}
                   className={classNames(
-                    'w-full rounded-xl px-2 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
+                    'shrink-0 rounded-xl px-3 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
                     activePage === 'group'
                       ? 'bg-blue-700 text-white'
                       : 'border border-slate-300 bg-white text-slate-700'
@@ -1193,7 +1193,7 @@ export default function App() {
                 <button
                   onClick={() => setActivePage('knockout')}
                   className={classNames(
-                    'w-full rounded-xl px-2 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
+                    'shrink-0 rounded-xl px-3 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
                     activePage === 'knockout'
                       ? 'bg-emerald-700 text-white'
                       : 'border border-slate-300 bg-white text-slate-700'
@@ -1205,7 +1205,7 @@ export default function App() {
                 <button
                   onClick={() => setActivePage('knockoutB')}
                   className={classNames(
-                    'w-full rounded-xl px-2 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
+                    'shrink-0 rounded-xl px-3 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
                     activePage === 'knockoutB'
                       ? 'bg-purple-700 text-white'
                       : 'border border-slate-300 bg-white text-slate-700'
@@ -1256,7 +1256,7 @@ export default function App() {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap gap-2">
-                {groupTabs.map(group => (
+                {/* group tabs hidden - showing all groups */}{false && groupTabs.map(group => (
                   <button
                     key={group}
                     onClick={() => setActiveGroup(group)}
@@ -1285,15 +1285,22 @@ export default function App() {
             </div>
             {adminMode && showGroupSetup && <GroupSetupPanel />}
 
-            <GroupStage
-              key={activeGroup}
-              database={database}
-              adminMode={adminMode}
-              dbPath={`clb31tq/group-stage/group${activeGroup}`}
-              groupCode={activeGroup}
-              groupName={`Bảng ${activeGroup}`}
-              initialPlayers={activeGroupPlayers}
-            />
+            <div className="overflow-x-auto">
+              <div className="flex gap-4 min-w-max pb-2">
+                {groupTabs.map(group => (
+                  <div key={group} className="w-[420px] shrink-0">
+                    <GroupStage
+                      database={database}
+                      adminMode={adminMode}
+                      dbPath={`clb31tq/group-stage/group${group}`}
+                      groupCode={group}
+                      groupName={`Bảng ${group}`}
+                      initialPlayers={groupAssignments[group] || []}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : activePage === 'knockout' ? (
           <Knockout
@@ -1312,53 +1319,7 @@ export default function App() {
             bracketSize={8}
           />
         )}
-
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur md:hidden">
-          <div className="grid grid-cols-4 gap-1">
-            <button
-              type="button"
-              onClick={() => setActivePage('live')}
-              className={classNames(
-                'rounded-xl px-1 py-2 text-[11px] font-black leading-tight',
-                activePage === 'live' ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-700'
-              )}
-            >
-              Live<br />Score
-            </button>
-            <button
-              type="button"
-              onClick={() => setActivePage('group')}
-              className={classNames(
-                'rounded-xl px-1 py-2 text-[11px] font-black leading-tight',
-                activePage === 'group' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'
-              )}
-            >
-              Vòng<br />bảng
-            </button>
-            <button
-              type="button"
-              onClick={() => setActivePage('knockout')}
-              className={classNames(
-                'rounded-xl px-1 py-2 text-[11px] font-black leading-tight',
-                activePage === 'knockout' ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-700'
-              )}
-            >
-              Serie<br />A
-            </button>
-            <button
-              type="button"
-              onClick={() => setActivePage('knockoutB')}
-              className={classNames(
-                'rounded-xl px-1 py-2 text-[11px] font-black leading-tight',
-                activePage === 'knockoutB' ? 'bg-purple-700 text-white' : 'bg-slate-100 text-slate-700'
-              )}
-            >
-              Serie<br />B
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
+<div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
           <div className="flex items-center justify-center gap-2">
             <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định và có thêm trang vòng bảng, Knock Out Serie A và Knock Out Serie B.
           </div>

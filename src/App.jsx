@@ -1089,149 +1089,179 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-700 via-slate-950 to-blue-900 p-2 text-slate-950 sm:p-5">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-5 overflow-hidden rounded-3xl bg-white/95 shadow-2xl">
-          <div className="bg-gradient-to-r from-red-700 via-red-600 to-yellow-400 px-5 py-5 text-white">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="min-w-0 flex-1">
-                {adminMode ? (
-                  <input
-                    value={data.clubTitle}
-                    onChange={e => updateField('clubTitle', e.target.value)}
-                    className="w-full bg-transparent text-lg font-black tracking-wide outline-none sm:text-2xl md:text-4xl"
-                  />
-                ) : (
-                  <h1 className="text-lg font-black tracking-wide sm:text-2xl md:text-4xl">{data.clubTitle}</h1>
-                )}
-                {adminMode ? (
-                  <input
-                    value={data.eventTitle}
-                    onChange={e => updateField('eventTitle', e.target.value)}
-                    className="mt-1 w-full bg-transparent text-base font-black tracking-wide outline-none sm:text-xl md:text-3xl"
-                  />
-                ) : (
-                  <h2 className="mt-1 text-base font-black tracking-wide sm:text-xl md:text-3xl">{data.eventTitle}</h2>
-                )}
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm font-semibold text-yellow-100">
-                  <span className="flex items-center gap-2">
-                    <Clock size={16} /> {data.note}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    {connected ? <Wifi size={16} /> : <WifiOff size={16} />}{' '}
-                    {connected ? 'Realtime Online' : hasFirebaseConfig ? 'Đang kết nối' : 'Demo local'}
-                  </span>
-                  <span>Cập nhật: {lastUpdated}</span>
-                </div>
-              </div>
+        {/* KHỐI HEADER + TAB ĐÃ TỐI ƯU MOBILE
+   Trong App.jsx, thay toàn bộ khối bắt đầu từ:
+   <div className="mb-5 overflow-hidden rounded-3xl bg-white/95 shadow-2xl">
+   đến hết phần:
+   </div>
+   ngay trước đoạn {activePage === 'live' ? (...)}
+*/}
 
-              <div className="flex gap-2 overflow-x-auto whitespace-nowrap pb-2">
-                <button
-                  onClick={handleAdminToggle}
-                  className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-slate-950 hover:bg-yellow-50"
-                >
-                  {adminMode ? <ShieldCheck size={16} /> : <Eye size={16} />}
-                  {adminMode ? 'Thoát Admin' : 'Admin'}
-                </button>
-                {adminMode && (
-                  <>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".xlsx,.xls,.csv"
-                      className="hidden"
-                      onChange={importPlayersFromExcel}
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-blue-700 hover:bg-yellow-50"
-                    >
-                      <Upload size={16} />
-                      Import VĐV Excel
-                    </button>
-                  </>
-                )}
-                {adminMode && (
-                  <button
-                    onClick={() => setShowPlayerManager(!showPlayerManager)}
-                    className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-bold text-emerald-700 hover:bg-yellow-50"
-                  >
-                    <UserPlus size={16} />
-                    Quản lý VĐV
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+<div className="mb-3 overflow-hidden rounded-3xl bg-white/95 shadow-2xl sm:mb-5">
+  <div className="bg-gradient-to-r from-red-700 via-red-600 to-yellow-400 px-4 py-3 text-white sm:px-5 sm:py-5">
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        {adminMode ? (
+          <input
+            value={data.clubTitle}
+            onChange={e => updateField('clubTitle', e.target.value)}
+            className="w-full bg-transparent text-base font-black tracking-wide outline-none sm:text-2xl md:text-4xl"
+          />
+        ) : (
+          <h1 className="truncate text-base font-black tracking-wide sm:text-2xl md:text-4xl">
+            {data.clubTitle}
+          </h1>
+        )}
 
-          <div className="space-y-3 p-3 sm:p-4">
-            <div className="sticky top-2 z-30 grid grid-cols-4 gap-2 rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-slate-200">
-              <button
-                onClick={() => setActivePage('live')}
-                className={classNames(
-                  'w-full rounded-xl px-1 py-2 text-center text-[10px] font-black leading-tight sm:px-4 sm:text-sm',
-                  activePage === 'live'
-                    ? 'bg-red-600 text-white'
-                    : 'border border-slate-300 bg-white text-slate-700'
-                )}
-              >
-                Live Score
-              </button>
+        {adminMode ? (
+          <input
+            value={data.eventTitle}
+            onChange={e => updateField('eventTitle', e.target.value)}
+            className="mt-0.5 w-full bg-transparent text-sm font-black tracking-wide outline-none sm:mt-1 sm:text-xl md:text-3xl"
+          />
+        ) : (
+          <h2 className="hidden sm:mt-1 sm:block sm:text-xl sm:font-black sm:tracking-wide md:text-3xl">
+            {data.eventTitle}
+          </h2>
+        )}
 
-              <button
-                onClick={() => setActivePage('group')}
-                className={classNames(
-                  'w-full rounded-xl px-1 py-2 text-center text-[10px] font-black leading-tight sm:px-4 sm:text-sm',
-                  activePage === 'group'
-                    ? 'bg-blue-700 text-white'
-                    : 'border border-slate-300 bg-white text-slate-700'
-                )}
-              >
-                Vòng bảng
-              </button>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-yellow-100 sm:mt-2 sm:text-sm">
+          <span className="hidden items-center gap-2 sm:flex">
+            <Clock size={16} /> {data.note}
+          </span>
 
-              <button
-                onClick={() => setActivePage('knockout')}
-                className={classNames(
-                  'w-full rounded-xl px-1 py-2 text-center text-[10px] font-black leading-tight sm:px-4 sm:text-sm',
-                  activePage === 'knockout'
-                    ? 'bg-emerald-700 text-white'
-                    : 'border border-slate-300 bg-white text-slate-700'
-                )}
-              >
-                Knock Out Serie A
-              </button>
+          <span className="flex items-center gap-1.5">
+            {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
+            {connected ? 'Online' : hasFirebaseConfig ? 'Đang kết nối' : 'Demo local'}
+          </span>
 
-              <button
-                onClick={() => setActivePage('knockoutB')}
-                className={classNames(
-                  'w-full rounded-xl px-1 py-2 text-center text-[10px] font-black leading-tight sm:px-4 sm:text-sm',
-                  activePage === 'knockoutB'
-                    ? 'bg-purple-700 text-white'
-                    : 'border border-slate-300 bg-white text-slate-700'
-                )}
-              >
-                Knock Out Serie B
-              </button>
-            </div>
+          <span>Cập nhật: {lastUpdated}</span>
+        </div>
+      </div>
 
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
-                <Edit3 size={16} />
-                {adminMode
-                  ? activePage === 'live'
-                    ? 'Chỉ hiển thị 4 bàn cố định. Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp.'
-                    : activePage === 'group'
-                    ? 'Vòng bảng: chọn Bảng A-F để xem từng bảng, nhập kết quả theo từng ô đối đầu và tự tính xếp hạng.'
-                    : activePage === 'knockout'
-                    ? 'Knock Out Serie A nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
-                    : 'Knock Out Serie B nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
-                  : activePage === 'live'
-                  ? 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'
-                  : activePage === 'group'
-                  ? 'Đây là trang xem vòng bảng. Chọn Bảng A-F để xem từng bảng.'
-                  : activePage === 'knockout'
-                  ? 'Đây là trang xem sơ đồ Knock Out Serie A. Kết quả sẽ tự cập nhật realtime.'
-                  : 'Đây là trang xem sơ đồ Knock Out Serie B. Kết quả sẽ tự cập nhật realtime.'}
-              </div>
+      <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto whitespace-nowrap">
+        <button
+          onClick={handleAdminToggle}
+          className="flex items-center gap-1 rounded-xl bg-white px-3 py-2 text-sm font-black text-slate-950 shadow hover:bg-yellow-50 sm:gap-2 sm:px-4"
+        >
+          {adminMode ? <ShieldCheck size={15} /> : <Eye size={15} />}
+          {adminMode ? 'Thoát' : 'Admin'}
+        </button>
+
+        {adminMode && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={importPlayersFromExcel}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="hidden items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-bold text-blue-700 hover:bg-yellow-50 sm:flex"
+            >
+              <Upload size={16} />
+              Import VĐV Excel
+            </button>
+          </>
+        )}
+
+        {adminMode && (
+          <button
+            onClick={() => setShowPlayerManager(!showPlayerManager)}
+            className="hidden items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-yellow-50 sm:flex"
+          >
+            <UserPlus size={16} />
+            Quản lý VĐV
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+
+  <div className="space-y-2 p-2 sm:space-y-3 sm:p-4">
+    <div className="sticky top-1 z-30 grid grid-cols-4 gap-1 rounded-2xl bg-white/95 p-1.5 shadow-lg ring-1 ring-slate-200 sm:top-2 sm:gap-2 sm:p-2">
+      <button
+        onClick={() => setActivePage('live')}
+        className={classNames(
+          'w-full rounded-xl px-1 py-1.5 text-center text-[10px] font-black leading-tight sm:px-4 sm:py-2 sm:text-sm',
+          activePage === 'live'
+            ? 'bg-red-600 text-white'
+            : 'border border-slate-300 bg-white text-slate-700'
+        )}
+      >
+        Live Score
+      </button>
+
+      <button
+        onClick={() => setActivePage('group')}
+        className={classNames(
+          'w-full rounded-xl px-1 py-1.5 text-center text-[10px] font-black leading-tight sm:px-4 sm:py-2 sm:text-sm',
+          activePage === 'group'
+            ? 'bg-blue-700 text-white'
+            : 'border border-slate-300 bg-white text-slate-700'
+        )}
+      >
+        Vòng bảng
+      </button>
+
+      <button
+        onClick={() => setActivePage('knockout')}
+        className={classNames(
+          'w-full rounded-xl px-1 py-1.5 text-center text-[10px] font-black leading-tight sm:px-4 sm:py-2 sm:text-sm',
+          activePage === 'knockout'
+            ? 'bg-emerald-700 text-white'
+            : 'border border-slate-300 bg-white text-slate-700'
+        )}
+      >
+        Knock Out Serie A
+      </button>
+
+      <button
+        onClick={() => setActivePage('knockoutB')}
+        className={classNames(
+          'w-full rounded-xl px-1 py-1.5 text-center text-[10px] font-black leading-tight sm:px-4 sm:py-2 sm:text-sm',
+          activePage === 'knockoutB'
+            ? 'bg-purple-700 text-white'
+            : 'border border-slate-300 bg-white text-slate-700'
+        )}
+      >
+        Knock Out Serie B
+      </button>
+    </div>
+
+    <div className="hidden flex-col gap-3 sm:flex lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
+        <Edit3 size={16} />
+        {adminMode
+          ? activePage === 'live'
+            ? 'Chỉ hiển thị 4 bàn cố định. Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp.'
+            : activePage === 'group'
+            ? 'Vòng bảng: chọn Bảng A-F để xem từng bảng, nhập kết quả theo từng ô đối đầu và tự tính xếp hạng.'
+            : activePage === 'knockout'
+            ? 'Knock Out Serie A nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
+            : 'Knock Out Serie B nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
+          : activePage === 'live'
+          ? 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'
+          : activePage === 'group'
+          ? 'Đây là trang xem vòng bảng. Chọn Bảng A-F để xem từng bảng.'
+          : activePage === 'knockout'
+          ? 'Đây là trang xem sơ đồ Knock Out Serie A. Kết quả sẽ tự cập nhật realtime.'
+          : 'Đây là trang xem sơ đồ Knock Out Serie B. Kết quả sẽ tự cập nhật realtime.'}
+      </div>
+
+      {activePage === 'live' && (
+        <div className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700">
+          4 bàn cố định
+        </div>
+      )}
+    </div>
+
+    {adminMode && showPlayerManager && <PlayerManagerPanel />}
+  </div>
+</div>
+
 
               {activePage === 'live' && (
                 <div className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700">

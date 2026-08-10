@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, onValue, ref, set } from 'firebase/database';
+import { getDatabase, onValue, ref, set, remove } from 'firebase/database';
 import GroupStage from './GroupStage';
 import Knockout from './Knockout';
 import {
@@ -378,54 +378,33 @@ export default function App() {
     });
   };
 
-const saveGroupSetup = async () => {
-  const payload = normalizeGroupAssignments(editingGroupAssignments);
+  const saveGroupSetup = async () => {
+    const payload = normalizeGroupAssignments(editingGroupAssignments);
+    const selectedPlayers = Object.values(payload).flat().filter(Boolean);
+    const duplicatePlayer = selectedPlayers.find((name, index, arr) => arr.indexOf(name) !== index);
 
-  const selectedPlayers = Object.values(payload)
-    .flat()
-    .filter(Boolean);
+    if (duplicatePlayer) {
+      window.alert(`VĐV "${duplicatePlayer}" đang bị chọn trùng giữa các bảng. Anh kiểm tra lại giúp em.`);
+      return;
+    }
 
-  const duplicatePlayer = selectedPlayers.find(
-    (name, index, arr) => arr.indexOf(name) !== index
-  );
+    await saveGroupAssignments(payload);
 
-  if (duplicatePlayer) {
-    window.alert(
-      `VĐV "${duplicatePlayer}" đang bị chọn trùng giữa các bảng. Anh kiểm tra lại giúp em.`
-    );
-    return;
-  }
+    if (database) {
+      await Promise.all(
+        groupTabs.map(async group => {
+          const groupPath = `clb31tq/group-stage/group${group}`;
 
-  // Lưu assignments
-  await saveGroupAssignments(payload);
+          await set(ref(database, `${groupPath}/players`), payload[group] || []);
+          await set(ref(database, `${groupPath}/groupName`), `Bảng ${group}`);
+        })
+      );
+    }
 
-  // Đồng bộ players cho GroupStage A-F
-  if (database) {
-    await Promise.all(
-      groupTabs.map(async group => {
-        const groupPath = `clb31tq/group-stage/group${group}`;
-
-        await set(
-          ref(database, `${groupPath}/players`),
-          payload[group] || []
-        );
-
-        await set(
-          ref(database, `${groupPath}/groupName`),
-          `Bảng ${group}`
-        );
-      })
-    );
-  }
-
-  setGroupAssignments(payload);
-
-  setShowGroupSetup(false);
-
-  window.alert(
-    'Đã lưu thành công danh sách VĐV cho tất cả các bảng A-F.'
-  );
-};
+    setGroupAssignments(payload);
+    setShowGroupSetup(false);
+    window.alert('Đã lưu thành công danh sách VĐV cho tất cả các bảng A-F.');
+  };
 
   const getPlayerNameFromRow = row => {
     const preferredKeys = ['Vận Động Viên', 'Vận động viên', 'VĐV', 'VDV', 'Họ tên', 'Tên', 'Name', 'name'];
@@ -621,8 +600,17 @@ const saveGroupSetup = async () => {
     const winner = isFinished ? (firstScore > secondScore ? firstPlayer : secondPlayer) : '';
     const matchKey = `${firstIndex}-${secondIndex}`;
     const groupPath = `clb31tq/group-stage/group${group}`;
-    const resultText = `${firstScore}-${secondScore}`;
 
+    if (firstScore === 0 && secondScore === 0) {
+      await Promise.all([
+        remove(ref(database, `${groupPath}/results/${matchKey}`)),
+        remove(ref(database, `${groupPath}/matches/${matchKey}`)),
+        remove(ref(database, `${groupPath}/liveScoreSync/${matchKey}`)),
+      ]);
+      return;
+    }
+
+    const resultText = `${firstScore}-${secondScore}`;
     const payload = {
       key: matchKey,
       source: 'live-score',
@@ -706,13 +694,16 @@ const saveGroupSetup = async () => {
 
   const resetScore = async id => {
     if (!adminMode) return;
-    let shouldSyncGroupStage = false;
 
     const matches = normalizeMatches(data.matches).map(m => {
       if (m.id !== id) return m;
-      shouldSyncGroupStage = isGroupStageLiveMatch(m);
+
       return {
         ...m,
+        playerA: '',
+        playerB: '',
+        content: '',
+        customContent: '',
         scoreA: 0,
         scoreB: 0,
         setA: 0,
@@ -722,6 +713,43 @@ const saveGroupSetup = async () => {
         status: 'Đang thi đấu',
       };
     });
+
+    await saveData({ ...data, matches });
+  };
+
+  const undoLastSet = async id => {
+    if (!adminMode) return;
+
+    let shouldSyncGroupStage = false;
+    let hasSetToUndo = false;
+
+    const matches = normalizeMatches(data.matches).map(m => {
+      if (m.id !== id) return m;
+
+      const currentHistory = m.setHistory || [];
+      if (!currentHistory.length) {
+        window.alert('Chưa có set nào để hoàn tác.');
+        return m;
+      }
+
+      hasSetToUndo = true;
+      shouldSyncGroupStage = isGroupStageLiveMatch(m);
+      const nextSetHistory = currentHistory.slice(0, -1);
+      const calculatedWins = getSetWins(nextSetHistory);
+
+      return {
+        ...m,
+        scoreA: 0,
+        scoreB: 0,
+        setA: calculatedWins.setA,
+        setB: calculatedWins.setB,
+        setHistory: nextSetHistory,
+        winner: '',
+        status: 'Đang thi đấu',
+      };
+    });
+
+    if (!hasSetToUndo) return;
 
     await saveData({ ...data, matches });
 
@@ -1202,6 +1230,14 @@ const saveGroupSetup = async () => {
             >
               <CheckCircle2 size={15} />
               Sang Set Tiếp Theo
+            </button>
+            <button
+              disabled={!(match.setHistory || []).length}
+              className="flex items-center gap-1 rounded-xl border border-amber-300 px-3 py-2 text-sm font-bold text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={() => undoLastSet(match.id)}
+            >
+              <RotateCcw size={15} />
+              Hoàn tác Set cuối
             </button>
             <button className="flex items-center gap-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-white" onClick={() => resetScore(match.id)}>
               <RotateCcw size={15} />

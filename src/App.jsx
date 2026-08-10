@@ -163,8 +163,6 @@ export default function App() {
     return base;
   };
 
-  const activeGroupPlayers = groupAssignments[activeGroup] || Array(PLAYERS_PER_GROUP).fill('');
-
   const normalizeMatches = matches => {
     const list = (matches || []).slice(0, MAX_TABLES);
     const filled = [...list];
@@ -1165,85 +1163,85 @@ export default function App() {
           </div>
 
           <div className="space-y-3 p-3 sm:p-4">
-              <div className="sticky top-2 z-30 flex gap-2 overflow-x-auto whitespace-nowrap rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-slate-200">
-                <button
-                  onClick={() => setActivePage('live')}
-                  className={classNames(
-                    'shrink-0 rounded-xl px-3 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
-                    activePage === 'live'
-                      ? 'bg-red-600 text-white'
-                      : 'border border-slate-300 bg-white text-slate-700'
-                  )}
-                >
-                  Live Score
-                </button>
-
-                <button
-                  onClick={() => setActivePage('group')}
-                  className={classNames(
-                    'shrink-0 rounded-xl px-3 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
-                    activePage === 'group'
-                      ? 'bg-blue-700 text-white'
-                      : 'border border-slate-300 bg-white text-slate-700'
-                  )}
-                >
-                  Vòng bảng
-                </button>
-
-                <button
-                  onClick={() => setActivePage('knockout')}
-                  className={classNames(
-                    'shrink-0 rounded-xl px-3 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
-                    activePage === 'knockout'
-                      ? 'bg-emerald-700 text-white'
-                      : 'border border-slate-300 bg-white text-slate-700'
-                  )}
-                >
-                  Knock Out Serie A
-                </button>
-
-                <button
-                  onClick={() => setActivePage('knockoutB')}
-                  className={classNames(
-                    'shrink-0 rounded-xl px-3 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
-                    activePage === 'knockoutB'
-                      ? 'bg-purple-700 text-white'
-                      : 'border border-slate-300 bg-white text-slate-700'
-                  )}
-                >
-                  Knock Out Serie B
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
-                  <Edit3 size={16} />
-                  {adminMode
-                    ? activePage === 'live'
-                      ? 'Chỉ hiển thị 4 bàn cố định. Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp.'
-                      : activePage === 'group'
-                      ? 'Vòng bảng có thể chọn VĐV bằng dropdown sau khi bốc thăm, nhập kết quả theo từng ô đối đầu và tự tính xếp hạng.'
-                      : activePage === 'knockout'
-                      ? 'Knock Out Serie A nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
-                      : 'Knock Out Serie B nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
-                    : activePage === 'live'
-                    ? 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'
-                    : activePage === 'group'
-                    ? 'Đây là trang xem vòng bảng. Danh sách VĐV và kết quả sẽ tự cập nhật realtime.'
-                    : activePage === 'knockout'
-                    ? 'Đây là trang xem sơ đồ Knock Out Serie A. Kết quả sẽ tự cập nhật realtime.'
-                    : 'Đây là trang xem sơ đồ Knock Out Serie B. Kết quả sẽ tự cập nhật realtime.'}
-                </div>
-
-                {activePage === 'live' && (
-                  <div className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700">
-                    4 bàn cố định
-                  </div>
+            <div className="sticky top-2 z-30 grid grid-cols-4 gap-2 rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-slate-200">
+              <button
+                onClick={() => setActivePage('live')}
+                className={classNames(
+                  'w-full rounded-xl px-1 py-2 text-center text-[10px] font-black leading-tight sm:px-4 sm:text-sm',
+                  activePage === 'live'
+                    ? 'bg-red-600 text-white'
+                    : 'border border-slate-300 bg-white text-slate-700'
                 )}
+              >
+                Live Score
+              </button>
+
+              <button
+                onClick={() => setActivePage('group')}
+                className={classNames(
+                  'w-full rounded-xl px-1 py-2 text-center text-[10px] font-black leading-tight sm:px-4 sm:text-sm',
+                  activePage === 'group'
+                    ? 'bg-blue-700 text-white'
+                    : 'border border-slate-300 bg-white text-slate-700'
+                )}
+              >
+                Vòng bảng
+              </button>
+
+              <button
+                onClick={() => setActivePage('knockout')}
+                className={classNames(
+                  'w-full rounded-xl px-1 py-2 text-center text-[10px] font-black leading-tight sm:px-4 sm:text-sm',
+                  activePage === 'knockout'
+                    ? 'bg-emerald-700 text-white'
+                    : 'border border-slate-300 bg-white text-slate-700'
+                )}
+              >
+                Knock Out Serie A
+              </button>
+
+              <button
+                onClick={() => setActivePage('knockoutB')}
+                className={classNames(
+                  'w-full rounded-xl px-1 py-2 text-center text-[10px] font-black leading-tight sm:px-4 sm:text-sm',
+                  activePage === 'knockoutB'
+                    ? 'bg-purple-700 text-white'
+                    : 'border border-slate-300 bg-white text-slate-700'
+                )}
+              >
+                Knock Out Serie B
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
+                <Edit3 size={16} />
+                {adminMode
+                  ? activePage === 'live'
+                    ? 'Chỉ hiển thị 4 bàn cố định. Có thể Import VĐV từ Excel hoặc Quản lý VĐV trực tiếp.'
+                    : activePage === 'group'
+                    ? 'Vòng bảng: chọn Bảng A-F để xem từng bảng, nhập kết quả theo từng ô đối đầu và tự tính xếp hạng.'
+                    : activePage === 'knockout'
+                    ? 'Knock Out Serie A nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
+                    : 'Knock Out Serie B nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
+                  : activePage === 'live'
+                  ? 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'
+                  : activePage === 'group'
+                  ? 'Đây là trang xem vòng bảng. Chọn Bảng A-F để xem từng bảng.'
+                  : activePage === 'knockout'
+                  ? 'Đây là trang xem sơ đồ Knock Out Serie A. Kết quả sẽ tự cập nhật realtime.'
+                  : 'Đây là trang xem sơ đồ Knock Out Serie B. Kết quả sẽ tự cập nhật realtime.'}
               </div>
 
-              {adminMode && showPlayerManager && <PlayerManagerPanel />}
+              {activePage === 'live' && (
+                <div className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700">
+                  4 bàn cố định
+                </div>
+              )}
             </div>
+
+            {adminMode && showPlayerManager && <PlayerManagerPanel />}
+          </div>
         </div>
 
         {activePage === 'live' ? (
@@ -1254,53 +1252,56 @@ export default function App() {
           </div>
         ) : activePage === 'group' ? (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap gap-2">
-                {/* group tabs hidden - showing all groups */}{false && groupTabs.map(group => (
+            <div className="rounded-3xl bg-white/95 p-3 shadow-xl">
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-lg font-black text-slate-900 sm:text-xl">Vòng bảng</div>
+                  <div className="text-sm font-semibold text-slate-600">
+                    Chọn bảng muốn xem. Mỗi lần chỉ hiển thị một bảng để dễ xem trên điện thoại.
+                  </div>
+                </div>
+
+                {adminMode && (
+                  <button
+                    onClick={() => {
+                      setEditingGroupAssignments(normalizeGroupAssignments(groupAssignments));
+                      setShowGroupSetup(!showGroupSetup);
+                    }}
+                    className="rounded-xl bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-800"
+                  >
+                    Thiết lập VĐV Bảng {activeGroup}
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-6 gap-2 rounded-2xl bg-slate-100 p-2">
+                {groupTabs.map(group => (
                   <button
                     key={group}
                     onClick={() => setActiveGroup(group)}
                     className={classNames(
-                      'w-full rounded-xl px-2 py-2 text-center text-xs font-black sm:px-4 sm:text-sm',
+                      'rounded-xl px-1 py-2 text-center text-xs font-black sm:px-2 sm:text-sm',
                       activeGroup === group
-                        ? 'bg-blue-700 text-white'
-                        : 'border border-slate-300 bg-white text-slate-700'
+                        ? 'bg-blue-700 text-white shadow'
+                        : 'border border-slate-300 bg-white text-slate-700 hover:bg-blue-50'
                     )}
                   >
                     Bảng {group}
                   </button>
                 ))}
               </div>
-              {adminMode && (
-                <button
-                  onClick={() => {
-                    setEditingGroupAssignments(normalizeGroupAssignments(groupAssignments));
-                    setShowGroupSetup(!showGroupSetup);
-                  }}
-                  className="rounded-xl bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-800"
-                >
-                  Thiết lập VĐV Bảng {activeGroup}
-                </button>
-              )}
             </div>
+
             {adminMode && showGroupSetup && <GroupSetupPanel />}
 
-            <div className="overflow-x-auto">
-              <div className="flex gap-4 min-w-max pb-2">
-                {groupTabs.map(group => (
-                  <div key={group} className="w-[420px] shrink-0">
-                    <GroupStage
-                      database={database}
-                      adminMode={adminMode}
-                      dbPath={`clb31tq/group-stage/group${group}`}
-                      groupCode={group}
-                      groupName={`Bảng ${group}`}
-                      initialPlayers={groupAssignments[group] || []}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
+            <GroupStage
+              database={database}
+              adminMode={adminMode}
+              dbPath={`clb31tq/group-stage/group${activeGroup}`}
+              groupCode={activeGroup}
+              groupName={`Bảng ${activeGroup}`}
+              initialPlayers={groupAssignments[activeGroup] || []}
+            />
           </div>
         ) : activePage === 'knockout' ? (
           <Knockout
@@ -1319,7 +1320,8 @@ export default function App() {
             bracketSize={8}
           />
         )}
-<div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
+
+        <div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
           <div className="flex items-center justify-center gap-2">
             <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định và có thêm trang vòng bảng, Knock Out Serie A và Knock Out Serie B.
           </div>

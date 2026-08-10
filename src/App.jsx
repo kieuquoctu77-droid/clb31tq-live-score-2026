@@ -540,8 +540,86 @@ export default function App() {
     );
   };
 
-  const finishSet = id => {
+
+  const cleanPlayerName = name => splitPlayerLabel(name).name.toLowerCase().trim();
+
+  const isGroupStageLiveMatch = match => {
+    const contentText = `${match.content || ''} ${match.customContent || ''}`.toLowerCase();
+    return contentText.includes('vòng bảng') || contentText.includes('vong bang');
+  };
+
+  const getGroupSyncInfo = match => {
+    if (!match?.playerA || !match?.playerB || !isGroupStageLiveMatch(match)) return null;
+
+    const normalizedAssignments = normalizeGroupAssignments(groupAssignments);
+    const playerAName = cleanPlayerName(match.playerA);
+    const playerBName = cleanPlayerName(match.playerB);
+
+    for (const group of groupTabs) {
+      const groupPlayers = normalizedAssignments[group] || [];
+      const normalizedPlayers = groupPlayers.map(cleanPlayerName);
+      const playerAIndex = normalizedPlayers.indexOf(playerAName);
+      const playerBIndex = normalizedPlayers.indexOf(playerBName);
+
+      if (playerAIndex >= 0 && playerBIndex >= 0 && playerAIndex !== playerBIndex) {
+        return { group, groupPlayers, playerAIndex, playerBIndex };
+      }
+    }
+
+    return null;
+  };
+
+  const syncGroupStageResultFromLiveMatch = async match => {
+    if (!database) return;
+
+    const syncInfo = getGroupSyncInfo(match);
+    if (!syncInfo) return;
+
+    const { group, groupPlayers, playerAIndex, playerBIndex } = syncInfo;
+    const setWins = getSetWins(match.setHistory || []);
+    const firstIndex = Math.min(playerAIndex, playerBIndex);
+    const secondIndex = Math.max(playerAIndex, playerBIndex);
+    const firstPlayer = groupPlayers[firstIndex];
+    const secondPlayer = groupPlayers[secondIndex];
+    const firstScore = playerAIndex === firstIndex ? setWins.setA : setWins.setB;
+    const secondScore = playerAIndex === firstIndex ? setWins.setB : setWins.setA;
+    const isFinished = firstScore >= SETS_TO_WIN || secondScore >= SETS_TO_WIN;
+    const winner = isFinished ? (firstScore > secondScore ? firstPlayer : secondPlayer) : '';
+    const matchKey = `${firstIndex}-${secondIndex}`;
+
+    const payload = {
+      key: matchKey,
+      source: 'live-score',
+      group,
+      playerA: firstPlayer,
+      playerB: secondPlayer,
+      scoreA: firstScore,
+      scoreB: secondScore,
+      setA: firstScore,
+      setB: secondScore,
+      livePlayerA: match.playerA,
+      livePlayerB: match.playerB,
+      liveScoreA: setWins.setA,
+      liveScoreB: setWins.setB,
+      setHistory: match.setHistory || [],
+      winner,
+      status: isFinished ? 'Kết thúc' : match.status || 'Đang thi đấu',
+      updatedAt: Date.now(),
+    };
+
+    const groupPath = `clb31tq/group-stage/group${group}`;
+
+    await Promise.all([
+      set(ref(database, `${groupPath}/matches/${matchKey}`), payload),
+      set(ref(database, `${groupPath}/results/${matchKey}`), payload),
+      set(ref(database, `${groupPath}/liveScoreSync/${matchKey}`), payload),
+    ]);
+  };
+
+  const finishSet = async id => {
     if (!adminMode) return;
+
+    let shouldSyncGroupStage = false;
 
     const matches = normalizeMatches(data.matches).map(m => {
       if (m.id !== id) return m;
@@ -570,6 +648,8 @@ export default function App() {
       const isFinished = nextSetA >= SETS_TO_WIN || nextSetB >= SETS_TO_WIN;
       const winner = isFinished ? (nextSetA > nextSetB ? m.playerA : m.playerB) : '';
 
+      shouldSyncGroupStage = isGroupStageLiveMatch(m);
+
       return {
         ...m,
         scoreA: 0,
@@ -582,26 +662,39 @@ export default function App() {
       };
     });
 
-    saveData({ ...data, matches });
+    await saveData({ ...data, matches });
+
+    if (shouldSyncGroupStage) {
+      const syncedMatch = matches.find(m => m.id === id);
+      await syncGroupStageResultFromLiveMatch(syncedMatch);
+    }
   };
 
-  const resetScore = id => {
+  const resetScore = async id => {
     if (!adminMode) return;
-    const matches = normalizeMatches(data.matches).map(m =>
-      m.id === id
-        ? {
-            ...m,
-            scoreA: 0,
-            scoreB: 0,
-            setA: 0,
-            setB: 0,
-            setHistory: [],
-            winner: '',
-            status: 'Đang thi đấu',
-          }
-        : m
-    );
-    saveData({ ...data, matches });
+    let shouldSyncGroupStage = false;
+
+    const matches = normalizeMatches(data.matches).map(m => {
+      if (m.id !== id) return m;
+      shouldSyncGroupStage = isGroupStageLiveMatch(m);
+      return {
+        ...m,
+        scoreA: 0,
+        scoreB: 0,
+        setA: 0,
+        setB: 0,
+        setHistory: [],
+        winner: '',
+        status: 'Đang thi đấu',
+      };
+    });
+
+    await saveData({ ...data, matches });
+
+    if (shouldSyncGroupStage) {
+      const syncedMatch = matches.find(m => m.id === id);
+      await syncGroupStageResultFromLiveMatch(syncedMatch);
+    }
   };
 
   const handleAdminToggle = () => {

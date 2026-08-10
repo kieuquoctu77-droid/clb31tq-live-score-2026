@@ -378,20 +378,54 @@ export default function App() {
     });
   };
 
-  const saveGroupSetup = async () => {
-    const payload = normalizeGroupAssignments(editingGroupAssignments);
-    const selectedPlayers = Object.values(payload).flat().filter(Boolean);
-    const duplicatePlayer = selectedPlayers.find((name, index, arr) => arr.indexOf(name) !== index);
+const saveGroupSetup = async () => {
+  const payload = normalizeGroupAssignments(editingGroupAssignments);
 
-    if (duplicatePlayer) {
-      window.alert(`VĐV "${duplicatePlayer}" đang bị chọn trùng giữa các bảng. Anh kiểm tra lại giúp em.`);
-      return;
-    }
+  const selectedPlayers = Object.values(payload)
+    .flat()
+    .filter(Boolean);
 
-    await saveGroupAssignments(payload);
-    setShowGroupSetup(false);
-    window.alert(`Đã lưu danh sách VĐV Bảng ${activeGroup}.`);
-  };
+  const duplicatePlayer = selectedPlayers.find(
+    (name, index, arr) => arr.indexOf(name) !== index
+  );
+
+  if (duplicatePlayer) {
+    window.alert(
+      `VĐV "${duplicatePlayer}" đang bị chọn trùng giữa các bảng. Anh kiểm tra lại giúp em.`
+    );
+    return;
+  }
+
+  // Lưu assignments
+  await saveGroupAssignments(payload);
+
+  // Đồng bộ players cho GroupStage A-F
+  if (database) {
+    await Promise.all(
+      groupTabs.map(async group => {
+        const groupPath = `clb31tq/group-stage/group${group}`;
+
+        await set(
+          ref(database, `${groupPath}/players`),
+          payload[group] || []
+        );
+
+        await set(
+          ref(database, `${groupPath}/groupName`),
+          `Bảng ${group}`
+        );
+      })
+    );
+  }
+
+  setGroupAssignments(payload);
+
+  setShowGroupSetup(false);
+
+  window.alert(
+    'Đã lưu thành công danh sách VĐV cho tất cả các bảng A-F.'
+  );
+};
 
   const getPlayerNameFromRow = row => {
     const preferredKeys = ['Vận Động Viên', 'Vận động viên', 'VĐV', 'VDV', 'Họ tên', 'Tên', 'Name', 'name'];

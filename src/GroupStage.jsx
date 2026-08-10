@@ -18,6 +18,17 @@ function normalizeGroupPlayers(players) {
 }
 
 function parseScore(value) {
+  if (value && typeof value === 'object') {
+    const rawA = value.scoreA ?? value.setA ?? value.a;
+    const rawB = value.scoreB ?? value.setB ?? value.b;
+    const a = Number(rawA);
+    const b = Number(rawB);
+
+    if (Number.isFinite(a) && Number.isFinite(b)) {
+      return { a, b };
+    }
+  }
+
   const text = String(value || '').trim();
   const match = text.match(/^(\d+)\s*-\s*(\d+)$/);
 
@@ -29,6 +40,12 @@ function parseScore(value) {
     a: Number(match[1]),
     b: Number(match[2]),
   };
+}
+
+function formatScore(value) {
+  const parsed = parseScore(value);
+  if (!parsed) return '';
+  return `${parsed.a}-${parsed.b}`;
 }
 
 function reverseScore(value) {
@@ -45,7 +62,7 @@ function getDisplayScore(results, i, j) {
   if (i === j) return '';
 
   const direct = results?.[`${i}-${j}`];
-  if (direct) return direct;
+  if (direct) return formatScore(direct);
 
   const reverse = results?.[`${j}-${i}`];
   if (reverse) return reverseScore(reverse);

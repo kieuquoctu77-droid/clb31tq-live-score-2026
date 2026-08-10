@@ -586,6 +586,8 @@ export default function App() {
     const isFinished = firstScore >= SETS_TO_WIN || secondScore >= SETS_TO_WIN;
     const winner = isFinished ? (firstScore > secondScore ? firstPlayer : secondPlayer) : '';
     const matchKey = `${firstIndex}-${secondIndex}`;
+    const groupPath = `clb31tq/group-stage/group${group}`;
+    const resultText = `${firstScore}-${secondScore}`;
 
     const payload = {
       key: matchKey,
@@ -607,11 +609,9 @@ export default function App() {
       updatedAt: Date.now(),
     };
 
-    const groupPath = `clb31tq/group-stage/group${group}`;
-
     await Promise.all([
+      set(ref(database, `${groupPath}/results/${matchKey}`), resultText),
       set(ref(database, `${groupPath}/matches/${matchKey}`), payload),
-      set(ref(database, `${groupPath}/results/${matchKey}`), payload),
       set(ref(database, `${groupPath}/liveScoreSync/${matchKey}`), payload),
     ]);
   };

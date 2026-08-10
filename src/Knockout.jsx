@@ -127,8 +127,11 @@ export default function Knockout({
   const storageKey = useMemo(() => `clb31tq-knockout-${dbPath}`, [dbPath]);
   const [data, setData] = useState(defaultData);
   const [connected, setConnected] = useState(false);
+
+  // Serie B cần hàng cao hơn vì thẻ đấu có đủ tên VĐV + dòng tỷ số.
+  // Nếu để 172px, các thẻ T1, T2, T3, T4 sẽ chồng lên nhau trên mobile.
   const ROW_HEIGHT_16 = 172;
-  const ROW_HEIGHT_8 = 172;
+  const ROW_HEIGHT_8 = 300;
 
   useEffect(() => {
     setData(defaultData);
@@ -470,15 +473,15 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
 function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore }) {
   return (
     <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-emerald-100">
-      <div className="min-w-[820px]">
-        <div className="mb-4 grid grid-cols-[260px_230px_250px] gap-x-8">
+      <div className="min-w-[980px]">
+        <div className="mb-4 grid grid-cols-[280px_260px_280px] gap-x-12">
           <RoundTitle color="text-emerald-800">TỨ KẾT</RoundTitle>
           <RoundTitle color="text-emerald-800">BÁN KẾT</RoundTitle>
           <RoundTitle color="text-yellow-700">CHUNG KẾT</RoundTitle>
         </div>
 
         <div
-          className="grid grid-cols-[260px_230px_250px] gap-x-8"
+          className="grid grid-cols-[280px_260px_280px] gap-x-12"
           style={{ gridTemplateRows: `repeat(4, ${rowHeight}px)` }}
         >
           {quarterEntries.map(([id, match], index) => (
@@ -555,16 +558,16 @@ function RoundTitle({ children, color }) {
 }
 
 function RightConnector() {
-  return <div className="absolute right-[-32px] top-1/2 h-[2px] w-8 bg-slate-400" />;
+  return <div className="absolute right-[-48px] top-1/2 h-[2px] w-12 bg-slate-400" />;
 }
 
 function LeftMergeConnector() {
   return (
     <>
-      <div className="absolute left-[-32px] top-[25%] h-[2px] w-8 bg-slate-300" />
-      <div className="absolute left-[-32px] top-[75%] h-[2px] w-8 bg-slate-300" />
-      <div className="absolute left-[-32px] top-[25%] h-1/2 w-[2px] bg-slate-300" />
-      <div className="absolute left-[-32px] top-1/2 h-[2px] w-8 bg-slate-400" />
+      <div className="absolute left-[-48px] top-[25%] h-[2px] w-12 bg-slate-300" />
+      <div className="absolute left-[-48px] top-[75%] h-[2px] w-12 bg-slate-300" />
+      <div className="absolute left-[-48px] top-[25%] h-1/2 w-[2px] bg-slate-300" />
+      <div className="absolute left-[-48px] top-1/2 h-[2px] w-12 bg-slate-400" />
     </>
   );
 }
@@ -598,7 +601,7 @@ function VerticalMatchCard({
     <div
       className={classNames(
         'relative z-10 w-full rounded-2xl border-2 bg-white shadow-md transition-all',
-        size === 'small' ? 'p-2' : 'p-3',
+        size === 'small' ? 'min-h-[150px] p-2' : 'min-h-[220px] p-3',
         match.winner ? 'border-emerald-400' : 'border-slate-200',
         finalMatch && 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200'
       )}

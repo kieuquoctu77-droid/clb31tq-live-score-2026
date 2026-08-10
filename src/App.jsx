@@ -1089,14 +1089,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-700 via-slate-950 to-blue-900 p-2 text-slate-950 sm:p-5">
       <div className="mx-auto max-w-7xl">
-        {/* KHỐI HEADER + TAB ĐÃ TỐI ƯU MOBILE
-   Trong App.jsx, thay toàn bộ khối bắt đầu từ:
-   <div className="mb-5 overflow-hidden rounded-3xl bg-white/95 shadow-2xl">
-   đến hết phần:
-   </div>
-   ngay trước đoạn {activePage === 'live' ? (...)}
-*/}
-
 <div className="mb-3 overflow-hidden rounded-3xl bg-white/95 shadow-2xl sm:mb-5">
   <div className="bg-gradient-to-r from-red-700 via-red-600 to-yellow-400 px-4 py-3 text-white sm:px-5 sm:py-5">
     <div className="flex items-center justify-between gap-3">
@@ -1262,17 +1254,6 @@ export default function App() {
   </div>
 </div>
 
-
-              {activePage === 'live' && (
-                <div className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700">
-                  4 bàn cố định
-                </div>
-              )}
-            </div>
-
-            {adminMode && showPlayerManager && <PlayerManagerPanel />}
-          </div>
-        </div>
 
         {activePage === 'live' ? (
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">

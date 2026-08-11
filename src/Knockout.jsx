@@ -347,45 +347,105 @@ function buildAutoSeedMap(groupMap, bracketSize) {
   const entries = getQualifiedEntries(groupMap);
   const pool = getEntryPool(entries, bracketSize);
   const slots = getSlotMeta(bracketSize);
-  const filledSlots = slots.filter(slot => getCandidateEntries(slot, pool, new Set()).length > 0);
-  const order = [...filledSlots].sort((a, b) => {
+
+  const qualifiersByGroup = pool.reduce((acc, entry) => {
+    if (!entry?.groupCode) return acc;
+    acc[entry.groupCode] = acc[entry.groupCode] || [];
+    acc[entry.groupCode].push(entry);
+    return acc;
+  }, {});
+
+  const availableSlots = slots.filter(slot => getCandidateEntries(slot, pool, new Set()).length > 0);
+  const order = [...availableSlots].sort((a, b) => {
     const aFixed = a.fixedGroup ? 0 : 1;
     const bFixed = b.fixedGroup ? 0 : 1;
     if (aFixed !== bFixed) return aFixed - bFixed;
     return a.allowedRanks.length - b.allowedRanks.length || a.matchNo - b.matchNo;
   });
 
-  let best = { placed: [], score: -Infinity };
-  const search = (index, usedNames, placed, totalScore) => {
-    if (index >= order.length) {
-      if (placed.length > best.placed.length || (placed.length === best.placed.length && totalScore > best.score)) {
-        best = { placed: [...placed], score: totalScore };
-      }
-      return;
-    }
+  const canPlaceStrict = (slot, entry, placed) => {
+    return placed.every(item => {
+      if (item.entry.groupCode !== entry.groupCode) return true;
 
-    const slot = order[index];
-    const candidates = getCandidateEntries(slot, pool, usedNames)
-      .map(entry => ({ entry, score: scoreCandidate(slot, entry, placed) }))
-      .sort((a, b) => b.score - a.score || a.entry.name.localeCompare(b.entry.name, 'vi'));
+      // Luật cứng 1: tuyệt đối không tái đấu ngay vòng đầu.
+      if (item.slot.matchNo === slot.matchNo) return false;
 
-    if (!candidates.length) {
-      search(index + 1, usedNames, placed, totalScore - 10000);
-      return;
-    }
+      // Luật cứng 2: tránh cùng tứ kết để không thể gặp lại ở tứ kết.
+      if (item.slot.quarterNo === slot.quarterNo) return false;
 
-    candidates.forEach(({ entry, score }) => {
-      usedNames.add(entry.name);
-      placed.push({ slot, entry });
-      search(index + 1, usedNames, placed, totalScore + score);
-      placed.pop();
-      usedNames.delete(entry.name);
+      // Luật cứng 3: nếu bảng đó chỉ có 2 VĐV trong Serie hiện tại,
+      // bắt buộc tách 2 nửa nhánh để chỉ có thể gặp ở chung kết.
+      const sameGroupCount = qualifiersByGroup[entry.groupCode]?.length || 0;
+      if (sameGroupCount <= 2 && item.slot.halfNo === slot.halfNo) return false;
+
+      // Nếu có 3 VĐV cùng bảng lọt Serie A thì không thể đảm bảo cả 3 chỉ gặp ở CK,
+      // vì sơ đồ chỉ có 2 nửa nhánh. Khi đó vẫn cho phép 2 người cùng nửa nhánh,
+      // nhưng đã bị chặn không cùng trận và không cùng tứ kết.
+      return true;
     });
   };
 
-  search(0, new Set(), [], 0);
+  const canPlaceRelaxed = (slot, entry, placed) => {
+    return placed.every(item => {
+      if (item.entry.groupCode !== entry.groupCode) return true;
+      if (item.slot.matchNo === slot.matchNo) return false;
+      return true;
+    });
+  };
 
-  return best.placed.reduce((acc, item) => {
+  const evaluateFinalLayout = placed => {
+    let score = 0;
+    for (let i = 0; i < placed.length; i += 1) {
+      for (let j = i + 1; j < placed.length; j += 1) {
+        const a = placed[i];
+        const b = placed[j];
+        if (a.entry.groupCode !== b.entry.groupCode) continue;
+        if (a.slot.matchNo === b.slot.matchNo) score -= 1000000;
+        else if (a.slot.quarterNo === b.slot.quarterNo) score -= 100000;
+        else if (a.slot.halfNo === b.slot.halfNo) score -= 1000;
+        else score += 3000;
+      }
+    }
+    return score;
+  };
+
+  const runSearch = strictMode => {
+    let best = { placed: [], score: -Infinity };
+
+    const search = (index, usedNames, placed) => {
+      if (index >= order.length) {
+        const score = evaluateFinalLayout(placed);
+        if (placed.length > best.placed.length || (placed.length === best.placed.length && score > best.score)) {
+          best = { placed: [...placed], score };
+        }
+        return;
+      }
+
+      const slot = order[index];
+      const candidates = getCandidateEntries(slot, pool, usedNames)
+        .filter(entry => (strictMode ? canPlaceStrict(slot, entry, placed) : canPlaceRelaxed(slot, entry, placed)))
+        .map(entry => ({ entry, score: scoreCandidate(slot, entry, placed) }))
+        .sort((a, b) => b.score - a.score || a.entry.name.localeCompare(b.entry.name, 'vi'));
+
+      candidates.forEach(({ entry }) => {
+        usedNames.add(entry.name);
+        placed.push({ slot, entry });
+        search(index + 1, usedNames, placed);
+        placed.pop();
+        usedNames.delete(entry.name);
+      });
+    };
+
+    search(0, new Set(), []);
+    return best;
+  };
+
+  // Chạy lần 1 bằng luật nghiêm ngặt. Nếu thiếu người do ràng buộc quá chặt,
+  // chạy lần 2 với luật nới lỏng để app vẫn có sơ đồ sử dụng được.
+  const strictResult = runSearch(true);
+  const finalResult = strictResult.placed.length === availableSlots.length ? strictResult : runSearch(false);
+
+  return finalResult.placed.reduce((acc, item) => {
     const key = `${item.slot.roundKey}.${item.slot.matchId}.${item.slot.playerKey}`;
     acc[key] = item.entry.name;
     return acc;

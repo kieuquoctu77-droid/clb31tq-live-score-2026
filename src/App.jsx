@@ -537,6 +537,57 @@ export default function App() {
     window.alert('Đã lưu thành công danh sách VĐV cho tất cả các bảng A-F.');
   };
 
+  const createRandomGroupResults = playersList => {
+    const list = Array.isArray(playersList) ? playersList.filter(Boolean) : [];
+    const results = {};
+    for (let i = 0; i < list.length; i += 1) {
+      for (let j = i + 1; j < list.length; j += 1) {
+        const winnerIsFirst = Math.random() >= 0.5;
+        const loserSets = Math.floor(Math.random() * SETS_TO_WIN); // 0, 1 hoặc 2
+        results[`${i}-${j}`] = winnerIsFirst ? `${SETS_TO_WIN}-${loserSets}` : `${loserSets}-${SETS_TO_WIN}`;
+      }
+    }
+    return results;
+  };
+
+  const generateRandomResultsForGroup = async group => {
+    if (!adminMode) return;
+    const normalizedAssignments = normalizeGroupAssignments(groupAssignments);
+    const playersList = (normalizedAssignments[group] || []).filter(Boolean);
+    if (playersList.length < 2) {
+      window.alert(`Bảng ${group} chưa có đủ VĐV để sinh kết quả test.`);
+      return;
+    }
+    const results = createRandomGroupResults(playersList);
+    const payload = {
+      groupName: `Bảng ${group}`,
+      players: normalizedAssignments[group] || [],
+      results,
+      manualSecondPlace: '',
+      testGeneratedAt: Date.now(),
+    };
+    if (database) {
+      await set(ref(database, `clb31tq/group-stage/group${group}`), payload);
+    }
+    if (group === activeGroup) {
+      setActiveGroupData(payload);
+    }
+  };
+
+  const generateRandomResultsForActiveGroup = async () => {
+    const ok = window.confirm(`Sinh ngẫu nhiên kết quả test cho Bảng ${activeGroup}? Kết quả cũ của bảng này sẽ bị ghi đè.`);
+    if (!ok) return;
+    await generateRandomResultsForGroup(activeGroup);
+    window.alert(`Đã sinh kết quả test cho Bảng ${activeGroup}.`);
+  };
+
+  const generateRandomResultsForAllGroups = async () => {
+    const ok = window.confirm('Sinh ngẫu nhiên kết quả test cho tất cả Bảng A-F? Toàn bộ kết quả vòng bảng hiện tại sẽ bị ghi đè.');
+    if (!ok) return;
+    await Promise.all(groupTabs.map(group => generateRandomResultsForGroup(group)));
+    window.alert('Đã sinh kết quả test cho tất cả Bảng A-F.');
+  };
+
   const getPlayerNameFromRow = row => {
     const preferredKeys = ['Vận Động Viên', 'Vận động viên', 'VĐV', 'VDV', 'Họ tên', 'Tên', 'Name', 'name'];
 
@@ -1632,15 +1683,29 @@ export default function App() {
                 </div>
 
                 {adminMode && (
-                  <button
-                    onClick={() => {
-                      setEditingGroupAssignments(normalizeGroupAssignments(groupAssignments));
-                      setShowGroupSetup(!showGroupSetup);
-                    }}
-                    className="rounded-xl bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-800"
-                  >
-                    Thiết lập VĐV Bảng {activeGroup}
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={generateRandomResultsForActiveGroup}
+                      className="rounded-xl bg-amber-500 px-4 py-2 font-bold text-slate-950 hover:bg-amber-400"
+                    >
+                      Test Bảng {activeGroup}
+                    </button>
+                    <button
+                      onClick={generateRandomResultsForAllGroups}
+                      className="rounded-xl bg-purple-700 px-4 py-2 font-bold text-white hover:bg-purple-800"
+                    >
+                      Test tất cả bảng
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingGroupAssignments(normalizeGroupAssignments(groupAssignments));
+                        setShowGroupSetup(!showGroupSetup);
+                      }}
+                      className="rounded-xl bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-800"
+                    >
+                      Thiết lập VĐV Bảng {activeGroup}
+                    </button>
+                  </div>
                 )}
               </div>
 

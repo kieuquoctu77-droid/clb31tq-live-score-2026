@@ -234,35 +234,186 @@ function getQualifiedLists(groupMap) {
   };
 }
 
-function applyFixedSeeds(data, groupMap, bracketSize) {
-  const next = prepareKnockoutData(cloneData(data), bracketSize);
+function getPlayerGroup(name, groupMap) {
+  const cleanName = String(name || '').trim();
+  if (!cleanName) return '';
+  for (const code of GROUP_CODES) {
+    const group = groupMap[code];
+    if ((group?.players || []).includes(cleanName)) return code;
+    if ((group?.standings || []).some(item => item.name === cleanName)) return code;
+  }
+  return '';
+}
 
-  const setIfSafe = (roundKey, matchId, playerKey, value) => {
-    if (!value) return;
-    const match = next[roundKey]?.[matchId];
-    if (!match) return;
-    if (match.winner) return;
-    if (isPlaceholder(match[playerKey]) || match[playerKey] === value) {
-      match[playerKey] = value;
-    }
+function getQualifiedEntries(groupMap) {
+  const firsts = [];
+  const seconds = [];
+  const thirds = [];
+  const fourths = [];
+
+  GROUP_CODES.forEach(code => {
+    const standings = groupMap[code]?.standings || [];
+    if (standings[0]?.name) firsts.push({ name: standings[0].name, groupCode: code, rank: 1, stats: standings[0] });
+    if (standings[1]?.name) seconds.push({ name: standings[1].name, groupCode: code, rank: 2, stats: standings[1] });
+    if (standings[2]?.name) thirds.push({ name: standings[2].name, groupCode: code, rank: 3, stats: standings[2] });
+    if (standings[3]?.name) fourths.push({ name: standings[3].name, groupCode: code, rank: 4, stats: standings[3] });
+  });
+
+  const sortByStats = (a, b) => {
+    if ((b.stats?.wins || 0) !== (a.stats?.wins || 0)) return (b.stats?.wins || 0) - (a.stats?.wins || 0);
+    if ((b.stats?.setDiff || 0) !== (a.stats?.setDiff || 0)) return (b.stats?.setDiff || 0) - (a.stats?.setDiff || 0);
+    if ((b.stats?.setFor || 0) !== (a.stats?.setFor || 0)) return (b.stats?.setFor || 0) - (a.stats?.setFor || 0);
+    return a.name.localeCompare(b.name, 'vi');
   };
 
+  const sortedThirds = [...thirds].sort(sortByStats);
+  return {
+    firsts,
+    seconds,
+    thirds: sortedThirds,
+    topThirds: sortedThirds.slice(0, 4),
+    remainingThirds: sortedThirds.slice(4),
+    fourths,
+  };
+}
+
+function getSlotMeta(bracketSize = 16) {
   if (Number(bracketSize) === 8) {
-    setIfSafe('quarter', 'tk1', 'p2', groupMap.A?.fourth);
-    setIfSafe('quarter', 'tk2', 'p2', groupMap.B?.fourth);
-    setIfSafe('quarter', 'tk3', 'p1', groupMap.C?.fourth);
-    setIfSafe('quarter', 'tk3', 'p2', groupMap.D?.fourth);
-    setIfSafe('quarter', 'tk4', 'p1', groupMap.E?.fourth);
-    setIfSafe('quarter', 'tk4', 'p2', groupMap.F?.fourth);
-    return next;
+    return [
+      { roundKey: 'quarter', matchId: 'tk1', playerKey: 'p1', allowedRanks: [3], matchNo: 1, quarterNo: 1, halfNo: 1 },
+      { roundKey: 'quarter', matchId: 'tk1', playerKey: 'p2', allowedRanks: [4], matchNo: 1, quarterNo: 1, halfNo: 1, fixedGroup: 'A' },
+      { roundKey: 'quarter', matchId: 'tk2', playerKey: 'p1', allowedRanks: [3], matchNo: 2, quarterNo: 2, halfNo: 1 },
+      { roundKey: 'quarter', matchId: 'tk2', playerKey: 'p2', allowedRanks: [4], matchNo: 2, quarterNo: 2, halfNo: 1, fixedGroup: 'B' },
+      { roundKey: 'quarter', matchId: 'tk3', playerKey: 'p1', allowedRanks: [4], matchNo: 3, quarterNo: 3, halfNo: 2, fixedGroup: 'C' },
+      { roundKey: 'quarter', matchId: 'tk3', playerKey: 'p2', allowedRanks: [4], matchNo: 3, quarterNo: 3, halfNo: 2, fixedGroup: 'D' },
+      { roundKey: 'quarter', matchId: 'tk4', playerKey: 'p1', allowedRanks: [4], matchNo: 4, quarterNo: 4, halfNo: 2, fixedGroup: 'E' },
+      { roundKey: 'quarter', matchId: 'tk4', playerKey: 'p2', allowedRanks: [4], matchNo: 4, quarterNo: 4, halfNo: 2, fixedGroup: 'F' },
+    ];
   }
 
-  setIfSafe('round16', 't2', 'p1', groupMap.A?.second);
-  setIfSafe('round16', 't2', 'p2', groupMap.D?.second);
-  setIfSafe('round16', 't4', 'p1', groupMap.B?.second);
-  setIfSafe('round16', 't4', 'p2', groupMap.C?.second);
-  setIfSafe('round16', 't6', 'p2', groupMap.E?.second);
-  setIfSafe('round16', 't8', 'p2', groupMap.F?.second);
+  return [
+    { roundKey: 'round16', matchId: 't1', playerKey: 'p1', allowedRanks: [1], matchNo: 1, quarterNo: 1, halfNo: 1 },
+    { roundKey: 'round16', matchId: 't1', playerKey: 'p2', allowedRanks: [3], matchNo: 1, quarterNo: 1, halfNo: 1 },
+    { roundKey: 'round16', matchId: 't2', playerKey: 'p1', allowedRanks: [2], matchNo: 2, quarterNo: 1, halfNo: 1, fixedGroup: 'A' },
+    { roundKey: 'round16', matchId: 't2', playerKey: 'p2', allowedRanks: [2], matchNo: 2, quarterNo: 1, halfNo: 1, fixedGroup: 'D' },
+    { roundKey: 'round16', matchId: 't3', playerKey: 'p1', allowedRanks: [1], matchNo: 3, quarterNo: 2, halfNo: 1 },
+    { roundKey: 'round16', matchId: 't3', playerKey: 'p2', allowedRanks: [3], matchNo: 3, quarterNo: 2, halfNo: 1 },
+    { roundKey: 'round16', matchId: 't4', playerKey: 'p1', allowedRanks: [2], matchNo: 4, quarterNo: 2, halfNo: 1, fixedGroup: 'B' },
+    { roundKey: 'round16', matchId: 't4', playerKey: 'p2', allowedRanks: [2], matchNo: 4, quarterNo: 2, halfNo: 1, fixedGroup: 'C' },
+    { roundKey: 'round16', matchId: 't5', playerKey: 'p1', allowedRanks: [1], matchNo: 5, quarterNo: 3, halfNo: 2 },
+    { roundKey: 'round16', matchId: 't5', playerKey: 'p2', allowedRanks: [3], matchNo: 5, quarterNo: 3, halfNo: 2 },
+    { roundKey: 'round16', matchId: 't6', playerKey: 'p1', allowedRanks: [1], matchNo: 6, quarterNo: 3, halfNo: 2 },
+    { roundKey: 'round16', matchId: 't6', playerKey: 'p2', allowedRanks: [2], matchNo: 6, quarterNo: 3, halfNo: 2, fixedGroup: 'E' },
+    { roundKey: 'round16', matchId: 't7', playerKey: 'p1', allowedRanks: [1], matchNo: 7, quarterNo: 4, halfNo: 2 },
+    { roundKey: 'round16', matchId: 't7', playerKey: 'p2', allowedRanks: [3], matchNo: 7, quarterNo: 4, halfNo: 2 },
+    { roundKey: 'round16', matchId: 't8', playerKey: 'p1', allowedRanks: [1], matchNo: 8, quarterNo: 4, halfNo: 2 },
+    { roundKey: 'round16', matchId: 't8', playerKey: 'p2', allowedRanks: [2], matchNo: 8, quarterNo: 4, halfNo: 2, fixedGroup: 'F' },
+  ];
+}
+
+function getEntryPool(entries, bracketSize) {
+  if (Number(bracketSize) === 8) {
+    return [...entries.remainingThirds, ...entries.fourths];
+  }
+  return [...entries.firsts, ...entries.seconds, ...entries.topThirds];
+}
+
+function getCandidateEntries(slot, pool, usedNames) {
+  return pool.filter(entry => {
+    if (!entry?.name || usedNames.has(entry.name)) return false;
+    if (!slot.allowedRanks.includes(entry.rank)) return false;
+    if (slot.fixedGroup && entry.groupCode !== slot.fixedGroup) return false;
+    return true;
+  });
+}
+
+function scoreCandidate(slot, candidate, placed) {
+  let score = 0;
+  placed.forEach(item => {
+    if (item.entry.groupCode !== candidate.groupCode) return;
+    if (item.slot.matchNo === slot.matchNo) score -= 100000;
+    if (item.slot.quarterNo === slot.quarterNo) score -= 5000;
+    if (item.slot.halfNo === slot.halfNo) score -= 700;
+  });
+
+  // Ưu tiên rải các VĐV cùng bảng sang 2 nhánh khác nhau để nếu gặp lại thì càng sâu càng tốt.
+  const sameGroupPlaced = placed.filter(item => item.entry.groupCode === candidate.groupCode);
+  if (sameGroupPlaced.length && sameGroupPlaced.every(item => item.slot.halfNo !== slot.halfNo)) score += 200;
+  if (slot.fixedGroup && slot.fixedGroup === candidate.groupCode) score += 100;
+  return score;
+}
+
+function buildAutoSeedMap(groupMap, bracketSize) {
+  const entries = getQualifiedEntries(groupMap);
+  const pool = getEntryPool(entries, bracketSize);
+  const slots = getSlotMeta(bracketSize);
+  const filledSlots = slots.filter(slot => getCandidateEntries(slot, pool, new Set()).length > 0);
+  const order = [...filledSlots].sort((a, b) => {
+    const aFixed = a.fixedGroup ? 0 : 1;
+    const bFixed = b.fixedGroup ? 0 : 1;
+    if (aFixed !== bFixed) return aFixed - bFixed;
+    return a.allowedRanks.length - b.allowedRanks.length || a.matchNo - b.matchNo;
+  });
+
+  let best = { placed: [], score: -Infinity };
+  const search = (index, usedNames, placed, totalScore) => {
+    if (index >= order.length) {
+      if (placed.length > best.placed.length || (placed.length === best.placed.length && totalScore > best.score)) {
+        best = { placed: [...placed], score: totalScore };
+      }
+      return;
+    }
+
+    const slot = order[index];
+    const candidates = getCandidateEntries(slot, pool, usedNames)
+      .map(entry => ({ entry, score: scoreCandidate(slot, entry, placed) }))
+      .sort((a, b) => b.score - a.score || a.entry.name.localeCompare(b.entry.name, 'vi'));
+
+    if (!candidates.length) {
+      search(index + 1, usedNames, placed, totalScore - 10000);
+      return;
+    }
+
+    candidates.forEach(({ entry, score }) => {
+      usedNames.add(entry.name);
+      placed.push({ slot, entry });
+      search(index + 1, usedNames, placed, totalScore + score);
+      placed.pop();
+      usedNames.delete(entry.name);
+    });
+  };
+
+  search(0, new Set(), [], 0);
+
+  return best.placed.reduce((acc, item) => {
+    const key = `${item.slot.roundKey}.${item.slot.matchId}.${item.slot.playerKey}`;
+    acc[key] = item.entry.name;
+    return acc;
+  }, {});
+}
+
+function canUpdateSeedSlot(match, playerKey, nextValue) {
+  if (!nextValue) return false;
+  if (!match) return false;
+  if (match.winner) return false;
+  const current = match[playerKey] || '';
+  return isPlaceholder(current) || current === nextValue || getPlayerGroup(current, {}) === '';
+}
+
+function applyFixedSeeds(data, groupMap, bracketSize) {
+  const next = prepareKnockoutData(cloneData(data), bracketSize);
+  const seedMap = buildAutoSeedMap(groupMap, bracketSize);
+
+  Object.entries(seedMap).forEach(([key, value]) => {
+    const [roundKey, matchId, playerKey] = key.split('.');
+    const match = next[roundKey]?.[matchId];
+    if (!match || match.winner) return;
+    const current = match[playerKey] || '';
+    const currentLooksSeeded = isPlaceholder(current) || getPlayerGroup(current, groupMap) || current === value;
+    if (currentLooksSeeded) {
+      match[playerKey] = value;
+    }
+  });
 
   return next;
 }

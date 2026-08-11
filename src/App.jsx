@@ -123,6 +123,60 @@ function formatPlayerLabel(name, rank) {
   return cleanRank ? `${cleanName} - ${cleanRank}` : cleanName;
 }
 
+function parseGroupScore(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/^(\d+)\s*-\s*(\d+)$/);
+  if (!match) return null;
+  return { a: Number(match[1]), b: Number(match[2]) };
+}
+
+function computeGroupStandingsForManual(players = [], results = {}) {
+  const standings = players.map((name, index) => ({
+    index,
+    name,
+    played: 0,
+    wins: 0,
+    losses: 0,
+    setFor: 0,
+    setAgainst: 0,
+    setDiff: 0,
+  }));
+
+  Object.entries(results || {}).forEach(([key, value]) => {
+    const parsed = parseGroupScore(value);
+    if (!parsed) return;
+    const [i, j] = key.split('-').map(Number);
+    if (!standings[i] || !standings[j]) return;
+    standings[i].played += 1;
+    standings[j].played += 1;
+    standings[i].setFor += parsed.a;
+    standings[i].setAgainst += parsed.b;
+    standings[j].setFor += parsed.b;
+    standings[j].setAgainst += parsed.a;
+    if (parsed.a > parsed.b) {
+      standings[i].wins += 1;
+      standings[j].losses += 1;
+    } else if (parsed.b > parsed.a) {
+      standings[j].wins += 1;
+      standings[i].losses += 1;
+    }
+  });
+
+  return standings
+    .map(item => ({ ...item, setDiff: item.setFor - item.setAgainst }))
+    .sort((a, b) => {
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      if (b.setDiff !== a.setDiff) return b.setDiff - a.setDiff;
+      if (b.setFor !== a.setFor) return b.setFor - a.setFor;
+      return a.name.localeCompare(b.name, 'vi');
+    });
+}
+
+function isSameSecondRankStats(a, b) {
+  if (!a || !b) return false;
+  return a.wins === b.wins && a.setDiff === b.setDiff && a.setFor === b.setFor;
+}
+
 export default function App() {
   const [data, setData] = useState(defaultData);
   const [players, setPlayers] = useState(defaultPlayers);
@@ -138,6 +192,7 @@ export default function App() {
   const [editRank, setEditRank] = useState('B1');
   const [showGroupSetup, setShowGroupSetup] = useState(false);
   const [groupAssignments, setGroupAssignments] = useState({});
+  const [activeGroupData, setActiveGroupData] = useState({});
   const [editingGroupAssignments, setEditingGroupAssignments] = useState({});
   const hydrated = useRef(false);
   const fileInputRef = useRef(null);
@@ -294,6 +349,28 @@ export default function App() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!database) {
+      setActiveGroupData({
+        players: groupAssignments[activeGroup] || [],
+        results: {},
+        manualSecondPlace: '',
+      });
+      return;
+    }
+    const groupRef = ref(database, `clb31tq/group-stage/group${activeGroup}`);
+    const unsubscribe = onValue(
+      groupRef,
+      snapshot => {
+        setActiveGroupData(snapshot.val() || {});
+      },
+      () => {
+        setActiveGroupData({});
+      }
+    );
+    return () => unsubscribe();
+  }, [activeGroup, groupAssignments]);
 
   useEffect(() => {
     if (showGroupSetup) {
@@ -788,6 +865,71 @@ export default function App() {
         second: '2-digit',
       })
     : '--:--:--';
+
+  const activeGroupStandings = useMemo(() => {
+    const playersForGroup = Array.isArray(activeGroupData.players) && activeGroupData.players.length
+      ? activeGroupData.players.filter(Boolean)
+      : groupAssignments[activeGroup] || [];
+    return computeGroupStandingsForManual(playersForGroup, activeGroupData.results || {});
+  }, [activeGroupData, groupAssignments, activeGroup]);
+
+  const secondPlaceTieCandidates = useMemo(() => {
+    const second = activeGroupStandings[1];
+    if (!second) return [];
+    return activeGroupStandings.filter(item => isSameSecondRankStats(item, second));
+  }, [activeGroupStandings]);
+
+  const saveManualSecondPlace = async value => {
+    if (!adminMode || !database) return;
+    await set(ref(database, `clb31tq/group-stage/group${activeGroup}/manualSecondPlace`), value || '');
+  };
+
+  const ManualSecondPlacePanel = () => {
+    const currentManualSecond = activeGroupData.manualSecondPlace || '';
+    if (!adminMode || secondPlaceTieCandidates.length < 2) return null;
+    return (
+      <div className="rounded-3xl border border-amber-300 bg-amber-50 p-4 shadow-inner">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-xl font-black text-amber-800">Bốc thăm xác định hạng nhì Bảng {activeGroup}</div>
+            <div className="text-sm font-semibold text-slate-600">
+              Các VĐV dưới đây đang bằng nhau theo số trận thắng, hiệu số set và số set thắng. BTC bốc thăm rồi chọn VĐV được xếp hạng nhì.
+            </div>
+          </div>
+          <div className="rounded-xl bg-white px-3 py-2 text-sm font-black text-amber-800 shadow-sm">
+            {secondPlaceTieCandidates.length} VĐV cạnh tranh
+          </div>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            <label className="mb-1 block text-sm font-black text-slate-700">Chọn VĐV hạng nhì sau bốc thăm</label>
+            <select
+              value={currentManualSecond}
+              onChange={e => saveManualSecondPlace(e.target.value)}
+              className="w-full rounded-xl border border-amber-300 bg-white px-4 py-3 text-base font-black text-slate-900 outline-none focus:border-amber-600"
+            >
+              <option value="">Chưa chọn, app tự tính theo thứ tự hiện tại</option>
+              {secondPlaceTieCandidates.map(item => (
+                <option key={item.name} value={item.name}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={() => saveManualSecondPlace('')}
+            className="rounded-xl border border-amber-300 bg-white px-4 py-3 font-bold text-amber-800 hover:bg-amber-100"
+          >
+            Bỏ chọn thủ công
+          </button>
+        </div>
+        <div className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-600">
+          Sau khi chọn, Knock Out sẽ lấy VĐV này làm <span className="font-black text-slate-900">Nhì bảng {activeGroup}</span> và tự đẩy các VĐV còn lại xuống hạng tiếp theo.
+        </div>
+      </div>
+    );
+  };
 
   const EditPlayerPopup = () => {
     if (editingPlayerIndex === null) return null;
@@ -1467,6 +1609,7 @@ export default function App() {
             </div>
 
             {adminMode && showGroupSetup && <GroupSetupPanel />}
+            <ManualSecondPlacePanel />
 
             <GroupStage
               database={database}

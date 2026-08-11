@@ -341,11 +341,27 @@ function getDrawSlotLabels(bracketSize = 16) {
   ];
 }
 
-function getDrawSlotLabelMap(bracketSize = 16) {
-  return getDrawSlotLabels(bracketSize).reduce((acc, slot) => {
+function getSecondPlaceSlotLabels(bracketSize = 16) {
+  if (Number(bracketSize) !== 16) return [];
+  return [
+    { label: 'H2A', roundKey: 'round16', matchId: 't2', playerKey: 'p1', type: 'Nhì bảng A' },
+    { label: 'H2D', roundKey: 'round16', matchId: 't2', playerKey: 'p2', type: 'Nhì bảng D' },
+    { label: 'H2B', roundKey: 'round16', matchId: 't4', playerKey: 'p1', type: 'Nhì bảng B' },
+    { label: 'H2C', roundKey: 'round16', matchId: 't4', playerKey: 'p2', type: 'Nhì bảng C' },
+    { label: 'H2E', roundKey: 'round16', matchId: 't6', playerKey: 'p2', type: 'Nhì bảng E' },
+    { label: 'H2F', roundKey: 'round16', matchId: 't8', playerKey: 'p2', type: 'Nhì bảng F' },
+  ];
+}
+
+function getSlotLabelMap(bracketSize = 16) {
+  return [...getDrawSlotLabels(bracketSize), ...getSecondPlaceSlotLabels(bracketSize)].reduce((acc, slot) => {
     acc[`${slot.roundKey}.${slot.matchId}.${slot.playerKey}`] = slot.label;
     return acc;
   }, {});
+}
+
+function getDrawSlotLabelMap(bracketSize = 16) {
+  return getSlotLabelMap(bracketSize);
 }
 
 function getPlayerEntryFromGroupMap(name, groupMap) {
@@ -576,10 +592,13 @@ export default function Knockout({
   const playerOptionsBySlot = useMemo(() => {
     if (normalizedBracketSize !== 16) return {};
     const firstOptions = qualifiedLists.firsts || [];
+    const secondOptions = qualifiedLists.seconds || [];
     const h3Options = uniq([...(qualifiedLists.thirds || []), ...(qualifiedLists.fourths || [])]);
-    return getDrawSlotLabels(normalizedBracketSize).reduce((acc, slot) => {
+    return [...getDrawSlotLabels(normalizedBracketSize), ...getSecondPlaceSlotLabels(normalizedBracketSize)].reduce((acc, slot) => {
       const key = `${slot.roundKey}.${slot.matchId}.${slot.playerKey}`;
-      acc[key] = slot.label.startsWith('N') ? firstOptions : h3Options;
+      if (slot.label.startsWith('N')) acc[key] = firstOptions;
+      else if (slot.label.startsWith('H2')) acc[key] = secondOptions;
+      else acc[key] = h3Options;
       return acc;
     }, {});
   }, [normalizedBracketSize, qualifiedLists]);
@@ -837,7 +856,7 @@ export default function Knockout({
       <div className="mt-5 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
         {normalizedBracketSize === 8
           ? 'Ghi chú Serie B: hạng tư bảng A-F tự cập nhật từ vòng bảng. Hai vị trí H3 còn lại chọn bằng dropdown.'
-          : 'Ghi chú Serie A: N1-N6 là thứ tự bốc thăm của 6 Nhất bảng. H3A-H3D là thứ tự bốc thăm của 4 VĐV hạng 3 xuất sắc nhất. Nhì bảng A-F được gắn cố định theo sơ đồ seed. Backtracking sẽ tự xếp để hạn chế tối đa VĐV cùng bảng gặp lại sớm.'}
+          : 'Ghi chú Serie A: N1-N6 là thứ tự bốc thăm của 6 Nhất bảng. H3A-H3D là thứ tự bốc thăm của 4 VĐV hạng 3 xuất sắc nhất. H2A-H2F là các VĐV nhì bảng A-F, nếu có bốc thăm hạng nhì ở vòng bảng thì tự nhận kết quả đã chọn. Backtracking sẽ tự xếp để hạn chế tối đa VĐV cùng bảng gặp lại sớm.'}
       </div>
     </div>
   );

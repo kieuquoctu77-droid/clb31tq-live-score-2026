@@ -1931,11 +1931,11 @@ export default function App() {
                 <div>
                   <div className="text-lg font-black text-slate-900 sm:text-xl">Vòng bảng</div>
                   <div className="text-sm font-semibold text-slate-600">
-                    Chọn bảng muốn xem. Mỗi lần chỉ hiển thị một bảng để dễ xem trên điện thoại.
+                    Chọn bảng A-F để xem vòng bảng, hoặc chọn H3 để chọn 4 VĐV hạng 3 xuất sắc.
                   </div>
                 </div>
 
-                {adminMode && (
+                {adminMode && activeGroup !== 'H3' && (
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={generateRandomResultsForActiveGroup}
@@ -1962,7 +1962,7 @@ export default function App() {
                 )}
               </div>
 
-              <div className="grid grid-cols-6 gap-2 rounded-2xl bg-slate-100 p-2">
+              <div className="grid grid-cols-7 gap-2 rounded-2xl bg-slate-100 p-2">
                 {groupTabs.map(group => (
                   <button
                     key={group}
@@ -1977,21 +1977,46 @@ export default function App() {
                     Bảng {group}
                   </button>
                 ))}
+                <button
+                  onClick={() => setActiveGroup('H3')}
+                  className={classNames(
+                    'rounded-xl px-1 py-2 text-center text-xs font-black sm:px-2 sm:text-sm',
+                    activeGroup === 'H3'
+                      ? 'bg-purple-700 text-white shadow'
+                      : 'border border-purple-300 bg-white text-purple-700 hover:bg-purple-50'
+                  )}
+                >
+                  Chọn H3
+                </button>
               </div>
             </div>
 
-            {adminMode && showGroupSetup && <GroupSetupPanel />}
-            <ManualRankingPanel />
-            <TopThirdSelectionPanel />
+            {activeGroup === 'H3' ? (
+              adminMode ? (
+                <TopThirdSelectionPanel />
+              ) : (
+                <div className="rounded-3xl bg-white/95 p-5 text-center shadow-xl">
+                  <div className="text-xl font-black text-purple-900">Chọn 4 VĐV hạng 3 xuất sắc</div>
+                  <div className="mt-2 text-sm font-semibold text-slate-600">
+                    Mục này chỉ dành cho Admin để chọn 4 VĐV hạng 3 vào Serie A.
+                  </div>
+                </div>
+              )
+            ) : (
+              <>
+                {adminMode && showGroupSetup && <GroupSetupPanel />}
+                <ManualRankingPanel />
 
-            <GroupStage
-              database={database}
-              adminMode={adminMode}
-              dbPath={`clb31tq/group-stage/group${activeGroup}`}
-              groupCode={activeGroup}
-              groupName={`Bảng ${activeGroup}`}
-              initialPlayers={groupAssignments[activeGroup] || []}
-            />
+                <GroupStage
+                  database={database}
+                  adminMode={adminMode}
+                  dbPath={`clb31tq/group-stage/group${activeGroup}`}
+                  groupCode={activeGroup}
+                  groupName={`Bảng ${activeGroup}`}
+                  initialPlayers={groupAssignments[activeGroup] || []}
+                />
+              </>
+            )}
           </div>
         ) : activePage === 'knockout' ? (
           <Knockout

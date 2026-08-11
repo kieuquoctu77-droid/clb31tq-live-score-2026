@@ -702,7 +702,7 @@ export default function Knockout({
     if (normalizedBracketSize !== 16) return {};
     const firstOptions = qualifiedLists.firsts || [];
     const secondOptions = qualifiedLists.seconds || [];
-    const h3Options = uniq([...(qualifiedLists.thirds || []), ...(qualifiedLists.fourths || [])]);
+    const h3Options = qualifiedLists.topThirds || [];
     return [...getDrawSlotLabels(normalizedBracketSize), ...getSecondPlaceSlotLabels(normalizedBracketSize)].reduce((acc, slot) => {
       const key = `${slot.roundKey}.${slot.matchId}.${slot.playerKey}`;
       if (slot.label.startsWith('N')) acc[key] = firstOptions;

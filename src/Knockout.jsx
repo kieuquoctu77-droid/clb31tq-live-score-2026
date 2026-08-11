@@ -327,6 +327,13 @@ function getDrawSlotLabels(bracketSize = 16) {
   ];
 }
 
+function getDrawSlotLabelMap(bracketSize = 16) {
+  return getDrawSlotLabels(bracketSize).reduce((acc, slot) => {
+    acc[`${slot.roundKey}.${slot.matchId}.${slot.playerKey}`] = slot.label;
+    return acc;
+  }, {});
+}
+
 function getPlayerEntryFromGroupMap(name, groupMap) {
   const cleanName = String(name || '').trim();
   if (!cleanName) return null;
@@ -510,8 +517,13 @@ function canUpdateSeedSlot(match, playerKey, nextValue) {
 function applyFixedSeeds(data, groupMap, bracketSize) {
   const next = prepareKnockoutData(cloneData(data), bracketSize);
   const seedMap = buildAutoSeedMap(groupMap, bracketSize);
+  const drawSlotKeys = new Set(getDrawSlotLabels(bracketSize).map(slot => `${slot.roundKey}.${slot.matchId}.${slot.playerKey}`));
 
   Object.entries(seedMap).forEach(([key, value]) => {
+    // Các ô N1-N6 và H3A-H3D là vị trí bốc thăm thủ công.
+    // App chỉ hiển thị nhãn ngay trên sơ đồ và để BTC chọn VĐV từ dropdown.
+    if (drawSlotKeys.has(key)) return;
+
     const [roundKey, matchId, playerKey] = key.split('.');
     const match = next[roundKey]?.[matchId];
     if (!match || match.winner) return;
@@ -524,6 +536,7 @@ function applyFixedSeeds(data, groupMap, bracketSize) {
 
   return next;
 }
+
 
 export default function Knockout({
   database = null,
@@ -545,6 +558,17 @@ export default function Knockout({
   const groupMap = useMemo(() => getGroupDataMap(groupStageData), [groupStageData]);
   const qualifiedLists = useMemo(() => getQualifiedLists(groupMap), [groupMap]);
   const drawNoteItems = useMemo(() => getDrawNoteItems(data, groupMap, normalizedBracketSize), [data, groupMap, normalizedBracketSize]);
+  const drawSlotLabelMap = useMemo(() => getDrawSlotLabelMap(normalizedBracketSize), [normalizedBracketSize]);
+  const playerOptionsBySlot = useMemo(() => {
+    if (normalizedBracketSize !== 16) return {};
+    const firstOptions = qualifiedLists.firsts || [];
+    const h3Options = qualifiedLists.topThirds || [];
+    return getDrawSlotLabels(normalizedBracketSize).reduce((acc, slot) => {
+      const key = `${slot.roundKey}.${slot.matchId}.${slot.playerKey}`;
+      acc[key] = slot.label.startsWith('N') ? firstOptions : h3Options;
+      return acc;
+    }, {});
+  }, [normalizedBracketSize, qualifiedLists]);
 
   useEffect(() => {
     setData(defaultData);
@@ -776,6 +800,8 @@ export default function Knockout({
           updatePlayer={updatePlayer}
           updateScore={updateScore}
           playerOptions={qualifiedLists.all}
+          slotLabelMap={drawSlotLabelMap}
+          playerOptionsBySlot={playerOptionsBySlot}
         />
       ) : (
         <SerieABracket
@@ -789,10 +815,11 @@ export default function Knockout({
           updatePlayer={updatePlayer}
           updateScore={updateScore}
           playerOptions={qualifiedLists.all}
+          slotLabelMap={drawSlotLabelMap}
+          playerOptionsBySlot={playerOptionsBySlot}
         />
       )}
 
-      {normalizedBracketSize === 16 && <DrawNotes items={drawNoteItems} />}
       <div className="mt-5 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
         {normalizedBracketSize === 8
           ? 'Ghi chú Serie B: hạng tư bảng A-F tự cập nhật từ vòng bảng. Hai vị trí H3 còn lại chọn bằng dropdown.'
@@ -802,7 +829,7 @@ export default function Knockout({
   );
 }
 
-function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore, playerOptions }) {
+function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore, playerOptions, slotLabelMap = {}, playerOptionsBySlot = {} }) {
   return (
     <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-red-100">
       <div className="min-w-[1080px]">
@@ -827,6 +854,8 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
                 onUpdatePlayer={updatePlayer}
                 onUpdateScore={updateScore}
                 playerOptions={playerOptions}
+                slotLabelMap={slotLabelMap}
+                playerOptionsBySlot={playerOptionsBySlot}
                 size="small"
               />
               <RightConnector />
@@ -844,6 +873,8 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
                 onUpdatePlayer={updatePlayer}
                 onUpdateScore={updateScore}
                 playerOptions={playerOptions}
+                slotLabelMap={slotLabelMap}
+                playerOptionsBySlot={playerOptionsBySlot}
                 color="blue"
               />
               <RightConnector />
@@ -861,6 +892,8 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
                 onUpdatePlayer={updatePlayer}
                 onUpdateScore={updateScore}
                 playerOptions={playerOptions}
+                slotLabelMap={slotLabelMap}
+                playerOptionsBySlot={playerOptionsBySlot}
                 color="emerald"
               />
               <RightConnector />
@@ -878,6 +911,8 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
                 onUpdatePlayer={updatePlayer}
                 onUpdateScore={updateScore}
                 playerOptions={playerOptions}
+                slotLabelMap={slotLabelMap}
+                playerOptionsBySlot={playerOptionsBySlot}
                 color="yellow"
                 finalMatch
               />
@@ -891,7 +926,7 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
   );
 }
 
-function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore, playerOptions }) {
+function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore, playerOptions, slotLabelMap = {}, playerOptionsBySlot = {} }) {
   return (
     <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-emerald-100">
       <div className="min-w-[980px]">
@@ -912,6 +947,8 @@ function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode
                 onUpdatePlayer={updatePlayer}
                 onUpdateScore={updateScore}
                 playerOptions={playerOptions}
+                slotLabelMap={slotLabelMap}
+                playerOptionsBySlot={playerOptionsBySlot}
                 color="green"
               />
               <RightConnector />
@@ -929,6 +966,8 @@ function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode
                 onUpdatePlayer={updatePlayer}
                 onUpdateScore={updateScore}
                 playerOptions={playerOptions}
+                slotLabelMap={slotLabelMap}
+                playerOptionsBySlot={playerOptionsBySlot}
                 color="emerald"
               />
               <RightConnector />
@@ -946,6 +985,8 @@ function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode
                 onUpdatePlayer={updatePlayer}
                 onUpdateScore={updateScore}
                 playerOptions={playerOptions}
+                slotLabelMap={slotLabelMap}
+                playerOptionsBySlot={playerOptionsBySlot}
                 color="yellow"
                 finalMatch
               />
@@ -1038,12 +1079,18 @@ function VerticalMatchCard({
   onUpdatePlayer,
   onUpdateScore,
   playerOptions = [],
+  slotLabelMap = {},
+  playerOptionsBySlot = {},
   color = 'red',
   finalMatch = false,
   size = 'normal',
 }) {
   const titleColor = getMatchColor(matchId, color);
-  const selectOptions = uniq([match.p1, match.p2, ...playerOptions]);
+  const getSlotLabel = playerKey => slotLabelMap[`${roundKey}.${matchId}.${playerKey}`] || '';
+  const getSlotOptions = playerKey => {
+    const slotKey = `${roundKey}.${matchId}.${playerKey}`;
+    return uniq([match[playerKey], ...(playerOptionsBySlot[slotKey] || playerOptions)]);
+  };
 
   return (
     <div
@@ -1071,7 +1118,8 @@ function VerticalMatchCard({
           adminMode={adminMode}
           placeholder="VĐV 1"
           compact={size === 'small'}
-          options={selectOptions}
+          options={getSlotOptions('p1')}
+          slotLabel={getSlotLabel('p1')}
         />
         <ScoreInputRow
           score1={match.score1}
@@ -1091,14 +1139,17 @@ function VerticalMatchCard({
           adminMode={adminMode}
           placeholder="VĐV 2"
           compact={size === 'small'}
-          options={selectOptions}
+          options={getSlotOptions('p2')}
+          slotLabel={getSlotLabel('p2')}
         />
       </div>
     </div>
   );
 }
 
-function PlayerRow({ value, selected, onChange, adminMode, placeholder, compact = false, options = [] }) {
+function PlayerRow({ value, selected, onChange, adminMode, placeholder, compact = false, options = [], slotLabel = '' }) {
+  const displayValue = slotLabel && isPlaceholder(value) ? '' : value || '';
+  const visibleValue = slotLabel && isPlaceholder(value) ? '-' : value || '-';
   return (
     <div
       className={classNames(
@@ -1107,26 +1158,35 @@ function PlayerRow({ value, selected, onChange, adminMode, placeholder, compact 
         selected ? 'border-emerald-700 bg-emerald-600 text-white shadow-md' : 'border-slate-200 bg-white text-slate-900'
       )}
     >
-      {adminMode ? (
-        <select
-          value={value || ''}
-          onChange={e => onChange(e.target.value)}
-          className={classNames(
-            'w-full rounded-lg bg-transparent font-black outline-none',
-            compact ? 'text-xs' : 'text-sm',
-            selected ? 'text-white' : 'text-slate-900'
+      <div className="flex items-center gap-2">
+        {slotLabel && (
+          <div className={classNames('shrink-0 rounded-lg px-2 py-1 text-[11px] font-black', selected ? 'bg-white text-emerald-700' : 'bg-slate-900 text-white')}>
+            {slotLabel}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          {adminMode ? (
+            <select
+              value={displayValue}
+              onChange={e => onChange(e.target.value || slotLabel || '')}
+              className={classNames(
+                'w-full rounded-lg bg-transparent font-black outline-none',
+                compact ? 'text-xs' : 'text-sm',
+                selected ? 'text-white' : 'text-slate-900'
+              )}
+            >
+              <option value="">{slotLabel ? `Chọn VĐV cho ${slotLabel}` : placeholder}</option>
+              {options.filter(option => !slotLabel || !isPlaceholder(option)).map(option => (
+                <option key={option} value={option} className="text-slate-900">
+                  {option}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className={classNames('truncate font-black', compact ? 'text-xs' : 'text-sm')}>{visibleValue}</div>
           )}
-        >
-          <option value="">{placeholder}</option>
-          {options.map(option => (
-            <option key={option} value={option} className="text-slate-900">
-              {option}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <div className={classNames('truncate font-black', compact ? 'text-xs' : 'text-sm')}>{value || '-'}</div>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -231,6 +231,65 @@ function isSameSecondRankStats(a, b) {
   return a.wins === b.wins && a.setDiff === b.setDiff && a.h2hWins === b.h2hWins && a.h2hSetDiff === b.h2hSetDiff;
 }
 
+
+function getRankTieKey(items = []) {
+  return items.map(item => item.name).filter(Boolean).sort((a, b) => a.localeCompare(b, 'vi')).join('|');
+}
+
+function isSameRankStats(a, b) {
+  if (!a || !b) return false;
+  return a.wins === b.wins && a.setDiff === b.setDiff && a.h2hWins === b.h2hWins && a.h2hSetDiff === b.h2hSetDiff;
+}
+
+function getRankingTieGroups(standings = []) {
+  const groups = [];
+  let index = 0;
+  while (index < standings.length) {
+    const current = [standings[index]];
+    let nextIndex = index + 1;
+    while (nextIndex < standings.length && isSameRankStats(standings[index], standings[nextIndex])) {
+      current.push(standings[nextIndex]);
+      nextIndex += 1;
+    }
+    if (current.length > 1) {
+      groups.push({
+        key: getRankTieKey(current),
+        startRank: index + 1,
+        endRank: index + current.length,
+        items: current,
+      });
+    }
+    index = nextIndex;
+  }
+  return groups;
+}
+
+function applyManualRanking(standings = [], manualRanking = {}) {
+  const tieGroups = getRankingTieGroups(standings);
+  if (!tieGroups.length || !manualRanking) return standings;
+  const result = [];
+  let index = 0;
+  tieGroups.forEach(group => {
+    while (index < group.startRank - 1) {
+      result.push(standings[index]);
+      index += 1;
+    }
+    const manualOrder = Array.isArray(manualRanking[group.key]) ? manualRanking[group.key] : [];
+    const orderedNames = [...manualOrder, ...group.items.map(item => item.name)].filter((name, idx, arr) => name && arr.indexOf(name) === idx);
+    const orderedItems = orderedNames
+      .map(name => group.items.find(item => item.name === name))
+      .filter(Boolean)
+      .map(item => ({ ...item, manualRanked: manualOrder.includes(item.name) }));
+    result.push(...orderedItems);
+    index = group.endRank;
+  });
+  while (index < standings.length) {
+    result.push(standings[index]);
+    index += 1;
+  }
+  return result;
+}
+
 export default function App() {
   const [data, setData] = useState(defaultData);
   const [players, setPlayers] = useState(defaultPlayers);
@@ -990,66 +1049,122 @@ export default function App() {
       })
     : '--:--:--';
 
-  const activeGroupStandings = useMemo(() => {
+  const activeGroupBaseStandings = useMemo(() => {
     const playersForGroup = Array.isArray(activeGroupData.players) && activeGroupData.players.length
       ? activeGroupData.players.filter(Boolean)
       : groupAssignments[activeGroup] || [];
     return computeGroupStandingsForManual(playersForGroup, activeGroupData.results || {});
   }, [activeGroupData, groupAssignments, activeGroup]);
 
-  const secondPlaceTieCandidates = useMemo(() => {
-    const second = activeGroupStandings[1];
-    if (!second) return [];
-    return activeGroupStandings.filter(item => isSameSecondRankStats(item, second));
-  }, [activeGroupStandings]);
+  const activeGroupStandings = useMemo(
+    () => applyManualRanking(activeGroupBaseStandings, activeGroupData.manualRanking || {}),
+    [activeGroupBaseStandings, activeGroupData.manualRanking]
+  );
 
-  const saveManualSecondPlace = async value => {
+  const rankingTieGroups = useMemo(() => getRankingTieGroups(activeGroupBaseStandings), [activeGroupBaseStandings]);
+
+  const saveManualRankingOrder = async (tieKey, order) => {
     if (!adminMode || !database) return;
-    await set(ref(database, `clb31tq/group-stage/group${activeGroup}/manualSecondPlace`), value || '');
+    const nextManualRanking = {
+      ...(activeGroupData.manualRanking || {}),
+      [tieKey]: order,
+    };
+    await set(ref(database, `clb31tq/group-stage/group${activeGroup}/manualRanking`), nextManualRanking);
   };
 
-  const ManualSecondPlacePanel = () => {
-    const currentManualSecond = activeGroupData.manualSecondPlace || '';
-    if (!adminMode || secondPlaceTieCandidates.length < 2) return null;
+  const clearManualRankingOrder = async tieKey => {
+    if (!adminMode || !database) return;
+    const nextManualRanking = { ...(activeGroupData.manualRanking || {}) };
+    delete nextManualRanking[tieKey];
+    await set(ref(database, `clb31tq/group-stage/group${activeGroup}/manualRanking`), nextManualRanking);
+  };
+
+  const moveManualRankingItem = async (tieGroup, itemIndex, direction) => {
+    const currentOrder = Array.isArray(activeGroupData.manualRanking?.[tieGroup.key])
+      ? [...activeGroupData.manualRanking[tieGroup.key]]
+      : tieGroup.items.map(item => item.name);
+    const nextIndex = itemIndex + direction;
+    if (nextIndex < 0 || nextIndex >= currentOrder.length) return;
+    const nextOrder = [...currentOrder];
+    [nextOrder[itemIndex], nextOrder[nextIndex]] = [nextOrder[nextIndex], nextOrder[itemIndex]];
+    await saveManualRankingOrder(tieGroup.key, nextOrder);
+  };
+
+  const ManualRankingPanel = () => {
+    if (!adminMode || rankingTieGroups.length < 1) return null;
     return (
       <div className="rounded-3xl border border-amber-300 bg-amber-50 p-4 shadow-inner">
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="text-xl font-black text-amber-800">Bốc thăm xác định hạng nhì Bảng {activeGroup}</div>
+            <div className="text-xl font-black text-amber-800">Xử lý đồng hạng Bảng {activeGroup}</div>
             <div className="text-sm font-semibold text-slate-600">
-              Các VĐV dưới đây đang bằng nhau theo số trận thắng, hiệu số set và số set thắng. BTC bốc thăm rồi chọn VĐV được xếp hạng nhì.
+              Nếu các VĐV vẫn bằng nhau sau số trận thắng, hiệu số set và đối đầu, BTC bốc thăm rồi sắp lại thứ tự tại đây. Thứ tự này sẽ được dùng cho hạng 1, 2, 3 hoặc 4 tùy nhóm đang tranh.
             </div>
           </div>
           <div className="rounded-xl bg-white px-3 py-2 text-sm font-black text-amber-800 shadow-sm">
-            {secondPlaceTieCandidates.length} VĐV cạnh tranh
+            {rankingTieGroups.length} nhóm đồng hạng
           </div>
         </div>
-        <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div>
-            <label className="mb-1 block text-sm font-black text-slate-700">Chọn VĐV hạng nhì sau bốc thăm</label>
-            <select
-              value={currentManualSecond}
-              onChange={e => saveManualSecondPlace(e.target.value)}
-              className="w-full rounded-xl border border-amber-300 bg-white px-4 py-3 text-base font-black text-slate-900 outline-none focus:border-amber-600"
-            >
-              <option value="">Chưa chọn, app tự tính theo thứ tự hiện tại</option>
-              {secondPlaceTieCandidates.map(item => (
-                <option key={item.name} value={item.name}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            type="button"
-            onClick={() => saveManualSecondPlace('')}
-            className="rounded-xl border border-amber-300 bg-white px-4 py-3 font-bold text-amber-800 hover:bg-amber-100"
-          >
-            Bỏ chọn thủ công
-          </button>
-        </div>
-        <div className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-600">
-          Sau khi chọn, Knock Out sẽ lấy VĐV này làm <span className="font-black text-slate-900">Nhì bảng {activeGroup}</span> và tự đẩy các VĐV còn lại xuống hạng tiếp theo.
+        <div className="space-y-3">
+          {rankingTieGroups.map(tieGroup => {
+            const currentOrder = Array.isArray(activeGroupData.manualRanking?.[tieGroup.key])
+              ? activeGroupData.manualRanking[tieGroup.key]
+              : tieGroup.items.map(item => item.name);
+            const itemMap = tieGroup.items.reduce((acc, item) => ({ ...acc, [item.name]: item }), {});
+            return (
+              <div key={tieGroup.key} className="rounded-2xl bg-white p-3 shadow-sm">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="font-black text-slate-900">
+                    Tranh hạng {tieGroup.startRank}{tieGroup.endRank !== tieGroup.startRank ? `-${tieGroup.endRank}` : ''}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => clearManualRankingOrder(tieGroup.key)}
+                    className="rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm font-bold text-amber-800 hover:bg-amber-100"
+                  >
+                    Bỏ sắp tay
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {currentOrder.map((name, index) => {
+                    const item = itemMap[name];
+                    if (!item) return null;
+                    return (
+                      <div key={name} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2">
+                        <div className="w-20 rounded-lg bg-amber-500 px-2 py-1 text-center text-sm font-black text-slate-950">
+                          Hạng {tieGroup.startRank + index}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-black text-slate-900">{name}</div>
+                          <div className="text-xs font-bold text-slate-500">
+                            Thắng {item.wins} • HS {item.setDiff > 0 ? `+${item.setDiff}` : item.setDiff} • Đối đầu {item.h2hWins} thắng, HS {item.h2hSetDiff > 0 ? `+${item.h2hSetDiff}` : item.h2hSetDiff}
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => moveManualRankingItem(tieGroup, index, -1)}
+                            className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-black disabled:opacity-40"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === currentOrder.length - 1}
+                            onClick={() => moveManualRankingItem(tieGroup, index, 1)}
+                            className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-black disabled:opacity-40"
+                          >
+                            ↓
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -1062,7 +1177,10 @@ export default function App() {
         const playersForGroup = Array.isArray(groupData.players) && groupData.players.length
           ? groupData.players.filter(Boolean)
           : groupAssignments[group] || [];
-        const standingsForGroup = computeGroupStandingsForManual(playersForGroup, groupData.results || {});
+        const standingsForGroup = applyManualRanking(
+          computeGroupStandingsForManual(playersForGroup, groupData.results || {}),
+          groupData.manualRanking || {}
+        );
         const third = standingsForGroup[2];
         return third ? { ...third, group } : null;
       })
@@ -1859,7 +1977,7 @@ export default function App() {
             </div>
 
             {adminMode && showGroupSetup && <GroupSetupPanel />}
-            <ManualSecondPlacePanel />
+            <ManualRankingPanel />
             <TopThirdSelectionPanel />
 
             <GroupStage

@@ -173,15 +173,58 @@ function computeStandings(players, results) {
     });
 }
 
-function applyManualSecondPlace(standings = [], manualSecondPlace = '') {
-  const selected = String(manualSecondPlace || '').trim();
-  if (!selected) return standings;
-  const selectedIndex = standings.findIndex(item => item.name === selected);
-  if (selectedIndex < 0 || selectedIndex === 1) return standings;
-  const next = [...standings];
-  const [selectedItem] = next.splice(selectedIndex, 1);
-  next.splice(1, 0, { ...selectedItem, manualSecondSelected: true });
-  return next;
+
+function getRankTieKey(items = []) {
+  return items.map(item => item.name).filter(Boolean).sort((a, b) => a.localeCompare(b, 'vi')).join('|');
+}
+
+function isSameRankStats(a, b) {
+  if (!a || !b) return false;
+  return a.wins === b.wins && a.setDiff === b.setDiff && a.h2hWins === b.h2hWins && a.h2hSetDiff === b.h2hSetDiff;
+}
+
+function getRankingTieGroups(standings = []) {
+  const groups = [];
+  let index = 0;
+  while (index < standings.length) {
+    const current = [standings[index]];
+    let nextIndex = index + 1;
+    while (nextIndex < standings.length && isSameRankStats(standings[index], standings[nextIndex])) {
+      current.push(standings[nextIndex]);
+      nextIndex += 1;
+    }
+    if (current.length > 1) {
+      groups.push({ key: getRankTieKey(current), startRank: index + 1, endRank: index + current.length, items: current });
+    }
+    index = nextIndex;
+  }
+  return groups;
+}
+
+function applyManualRanking(standings = [], manualRanking = {}) {
+  const tieGroups = getRankingTieGroups(standings);
+  if (!tieGroups.length || !manualRanking) return standings;
+  const result = [];
+  let index = 0;
+  tieGroups.forEach(group => {
+    while (index < group.startRank - 1) {
+      result.push(standings[index]);
+      index += 1;
+    }
+    const manualOrder = Array.isArray(manualRanking[group.key]) ? manualRanking[group.key] : [];
+    const orderedNames = [...manualOrder, ...group.items.map(item => item.name)].filter((name, idx, arr) => name && arr.indexOf(name) === idx);
+    const orderedItems = orderedNames
+      .map(name => group.items.find(item => item.name === name))
+      .filter(Boolean)
+      .map(item => ({ ...item, manualRanked: manualOrder.includes(item.name) }));
+    result.push(...orderedItems);
+    index = group.endRank;
+  });
+  while (index < standings.length) {
+    result.push(standings[index]);
+    index += 1;
+  }
+  return result;
 }
 
 
@@ -246,8 +289,8 @@ export default function GroupStage({
   }, [database, dbPath, initialPlayers, groupCode, groupName]);
 
   const standings = useMemo(
-    () => applyManualSecondPlace(computeStandings(group.players || [], group.results || {}), group.manualSecondPlace || ''),
-    [group.players, group.results, group.manualSecondPlace]
+    () => applyManualRanking(computeStandings(group.players || [], group.results || {}), group.manualRanking || {}),
+    [group.players, group.results, group.manualRanking]
   );
 
   const saveGroup = async nextGroup => {
@@ -437,12 +480,12 @@ export default function GroupStage({
                   <td className="border px-3 py-2 font-bold">
                     <div className="flex flex-col gap-1">
                       <span>{item.name}</span>
-                      {item.manualSecondSelected && (
+                      {item.manualRanked && (
                         <span className="w-fit rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
-                          Hạng nhì do BTC bốc thăm
+                          Thứ hạng do BTC bốc thăm
                         </span>
                       )}
-                      {item.needsDraw && !item.manualSecondSelected && (
+                      {item.needsDraw && !item.manualRanked && (
                         <span className="w-fit rounded-lg bg-yellow-100 px-2 py-0.5 text-[11px] font-black text-yellow-800">
                           Cần bốc thăm nếu tranh hạng
                         </span>

@@ -234,16 +234,57 @@ function isPlaceholder(value) {
   return !text || /^n[1-6]$/.test(text) || /^h3[a-d]$/.test(text) || text.includes('bảng') || text.includes('bốc thăm') || text.includes('còn lại') || text.includes('hạng');
 }
 
-function applyManualSecondPlace(standings = [], manualSecondPlace = '') {
-  const selected = String(manualSecondPlace || '').trim();
-  if (!selected) return standings;
-  const selectedIndex = standings.findIndex(item => item.name === selected);
-  if (selectedIndex < 0 || selectedIndex === 1) return standings;
-  const next = [...standings];
-  const [selectedItem] = next.splice(selectedIndex, 1);
-  next.splice(1, 0, selectedItem);
-  return next;
+
+function getRankTieKey(items = []) {
+  return items.map(item => item.name).filter(Boolean).sort((a, b) => a.localeCompare(b, 'vi')).join('|');
 }
+
+function isSameRankStats(a, b) {
+  if (!a || !b) return false;
+  return a.wins === b.wins && a.setDiff === b.setDiff && a.h2hWins === b.h2hWins && a.h2hSetDiff === b.h2hSetDiff;
+}
+
+function getRankingTieGroups(standings = []) {
+  const groups = [];
+  let index = 0;
+  while (index < standings.length) {
+    const current = [standings[index]];
+    let nextIndex = index + 1;
+    while (nextIndex < standings.length && isSameRankStats(standings[index], standings[nextIndex])) {
+      current.push(standings[nextIndex]);
+      nextIndex += 1;
+    }
+    if (current.length > 1) {
+      groups.push({ key: getRankTieKey(current), startRank: index + 1, endRank: index + current.length, items: current });
+    }
+    index = nextIndex;
+  }
+  return groups;
+}
+
+function applyManualRanking(standings = [], manualRanking = {}) {
+  const tieGroups = getRankingTieGroups(standings);
+  if (!tieGroups.length || !manualRanking) return standings;
+  const result = [];
+  let index = 0;
+  tieGroups.forEach(group => {
+    while (index < group.startRank - 1) {
+      result.push(standings[index]);
+      index += 1;
+    }
+    const manualOrder = Array.isArray(manualRanking[group.key]) ? manualRanking[group.key] : [];
+    const orderedNames = [...manualOrder, ...group.items.map(item => item.name)].filter((name, idx, arr) => name && arr.indexOf(name) === idx);
+    const orderedItems = orderedNames.map(name => group.items.find(item => item.name === name)).filter(Boolean);
+    result.push(...orderedItems);
+    index = group.endRank;
+  });
+  while (index < standings.length) {
+    result.push(standings[index]);
+    index += 1;
+  }
+  return result;
+}
+
 
 function getGroupDataMap(groupStageData = {}) {
   const map = {};
@@ -251,13 +292,24 @@ function getGroupDataMap(groupStageData = {}) {
     const groupData = groupStageData[`group${code}`] || {};
     const players = Array.isArray(groupData.players) ? groupData.players.filter(Boolean) : [];
     const results = groupData.results || {};
-    const manualSecondPlace = groupData.manualSecondPlace || '';
-    const standings = applyManualSecondPlace(computeGroupStandings(players, results), manualSecondPlace).map(item => ({ ...item, groupCode: code }));
+    const manualRanking = groupData.manualRanking || {};
+    const legacySecondPlace = groupData.manualSecondPlace || '';
+    let standings = applyManualRanking(computeGroupStandings(players, results), manualRanking);
+    if (legacySecondPlace && !Object.keys(manualRanking).length) {
+      const selectedIndex = standings.findIndex(item => item.name === legacySecondPlace);
+      if (selectedIndex > 1) {
+        const next = [...standings];
+        const [selectedItem] = next.splice(selectedIndex, 1);
+        next.splice(1, 0, selectedItem);
+        standings = next;
+      }
+    }
+    standings = standings.map(item => ({ ...item, groupCode: code }));
 
     map[code] = {
       players,
       results,
-      manualSecondPlace,
+      manualRanking,
       standings,
       first: standings[0]?.name || '',
       second: standings[1]?.name || '',

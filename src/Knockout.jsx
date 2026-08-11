@@ -241,7 +241,9 @@ function getRankTieKey(items = []) {
 
 function isSameRankStats(a, b) {
   if (!a || !b) return false;
-  return a.wins === b.wins && a.setDiff === b.setDiff && a.h2hWins === b.h2hWins && a.h2hSetDiff === b.h2hSetDiff;
+  // BTC cần xử lý bốc thăm/thủ công ngay khi VĐV bằng số trận thắng và hiệu số set toàn bảng.
+  // Đối đầu chỉ dùng làm thứ tự mặc định ban đầu; Admin vẫn có thể đổi thứ tự bằng panel Xử lý đồng hạng.
+  return a.wins === b.wins && a.setDiff === b.setDiff;
 }
 
 function getRankingTieGroups(standings = []) {

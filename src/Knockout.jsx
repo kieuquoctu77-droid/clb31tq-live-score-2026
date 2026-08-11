@@ -186,17 +186,30 @@ function isPlaceholder(value) {
   return !text || /^n[1-6]$/.test(text) || /^h3[a-d]$/.test(text) || text.includes('bảng') || text.includes('bốc thăm') || text.includes('còn lại') || text.includes('hạng');
 }
 
+function applyManualSecondPlace(standings = [], manualSecondPlace = '') {
+  const selected = String(manualSecondPlace || '').trim();
+  if (!selected) return standings;
+  const selectedIndex = standings.findIndex(item => item.name === selected);
+  if (selectedIndex < 0 || selectedIndex === 1) return standings;
+  const next = [...standings];
+  const [selectedItem] = next.splice(selectedIndex, 1);
+  next.splice(1, 0, selectedItem);
+  return next;
+}
+
 function getGroupDataMap(groupStageData = {}) {
   const map = {};
   GROUP_CODES.forEach(code => {
     const groupData = groupStageData[`group${code}`] || {};
     const players = Array.isArray(groupData.players) ? groupData.players.filter(Boolean) : [];
     const results = groupData.results || {};
-    const standings = computeGroupStandings(players, results).map(item => ({ ...item, groupCode: code }));
+    const manualSecondPlace = groupData.manualSecondPlace || '';
+    const standings = applyManualSecondPlace(computeGroupStandings(players, results), manualSecondPlace).map(item => ({ ...item, groupCode: code }));
 
     map[code] = {
       players,
       results,
+      manualSecondPlace,
       standings,
       first: standings[0]?.name || '',
       second: standings[1]?.name || '',
@@ -206,6 +219,7 @@ function getGroupDataMap(groupStageData = {}) {
   });
   return map;
 }
+
 
 function getQualifiedLists(groupMap) {
   const firsts = GROUP_CODES.map(code => groupMap[code]?.first).filter(Boolean);

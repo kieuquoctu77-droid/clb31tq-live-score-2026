@@ -132,22 +132,22 @@ function computeGroupStandings(players = [], results = {}) {
     setFor: 0,
     setAgainst: 0,
     setDiff: 0,
+    h2hWins: 0,
+    h2hSetDiff: 0,
+    needsDraw: false,
   }));
 
   Object.entries(results || {}).forEach(([key, value]) => {
     const parsed = parseScore(value);
     if (!parsed) return;
-
     const [i, j] = key.split('-').map(Number);
     if (!standings[i] || !standings[j]) return;
-
     standings[i].played += 1;
     standings[j].played += 1;
     standings[i].setFor += parsed.a;
     standings[i].setAgainst += parsed.b;
     standings[j].setFor += parsed.b;
     standings[j].setAgainst += parsed.a;
-
     if (parsed.a > parsed.b) {
       standings[i].wins += 1;
       standings[j].losses += 1;
@@ -157,18 +157,66 @@ function computeGroupStandings(players = [], results = {}) {
     }
   });
 
-  return standings
-    .map(item => ({
-      ...item,
-      setDiff: item.setFor - item.setAgainst,
-    }))
+  const withDiff = standings.map(item => ({ ...item, setDiff: item.setFor - item.setAgainst }));
+  const groupsByWinsAndDiff = withDiff.reduce((acc, item) => {
+    const key = `${item.wins}|${item.setDiff}`;
+    acc[key] = acc[key] || [];
+    acc[key].push(item);
+    return acc;
+  }, {});
+
+  return Object.values(groupsByWinsAndDiff)
     .sort((a, b) => {
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      if (b.setDiff !== a.setDiff) return b.setDiff - a.setDiff;
-      if (b.setFor !== a.setFor) return b.setFor - a.setFor;
-      return a.name.localeCompare(b.name, 'vi');
+      if ((b[0]?.wins || 0) !== (a[0]?.wins || 0)) return (b[0]?.wins || 0) - (a[0]?.wins || 0);
+      return (b[0]?.setDiff || 0) - (a[0]?.setDiff || 0);
+    })
+    .flatMap(group => {
+      if (group.length === 1) return group;
+      const indexSet = new Set(group.map(item => item.index));
+      const mini = group.reduce((acc, item) => {
+        acc[item.index] = { h2hWins: 0, h2hSetFor: 0, h2hSetAgainst: 0 };
+        return acc;
+      }, {});
+
+      Object.entries(results || {}).forEach(([key, value]) => {
+        const parsed = parseScore(value);
+        if (!parsed) return;
+        const [i, j] = key.split('-').map(Number);
+        if (!indexSet.has(i) || !indexSet.has(j)) return;
+        mini[i].h2hSetFor += parsed.a;
+        mini[i].h2hSetAgainst += parsed.b;
+        mini[j].h2hSetFor += parsed.b;
+        mini[j].h2hSetAgainst += parsed.a;
+        if (parsed.a > parsed.b) mini[i].h2hWins += 1;
+        if (parsed.b > parsed.a) mini[j].h2hWins += 1;
+      });
+
+      const enriched = group.map(item => {
+        const h2h = mini[item.index] || {};
+        return {
+          ...item,
+          h2hWins: h2h.h2hWins || 0,
+          h2hSetDiff: (h2h.h2hSetFor || 0) - (h2h.h2hSetAgainst || 0),
+        };
+      });
+
+      return enriched
+        .map(item => ({
+          ...item,
+          needsDraw: enriched.some(other =>
+            other.index !== item.index &&
+            other.h2hWins === item.h2hWins &&
+            other.h2hSetDiff === item.h2hSetDiff
+          ),
+        }))
+        .sort((a, b) => {
+          if (b.h2hWins !== a.h2hWins) return b.h2hWins - a.h2hWins;
+          if (b.h2hSetDiff !== a.h2hSetDiff) return b.h2hSetDiff - a.h2hSetDiff;
+          return a.name.localeCompare(b.name, 'vi');
+        });
     });
 }
+
 
 function getLoser(match, winner) {
   if (!match) return '';

@@ -562,7 +562,7 @@ export default function Knockout({
   const playerOptionsBySlot = useMemo(() => {
     if (normalizedBracketSize !== 16) return {};
     const firstOptions = qualifiedLists.firsts || [];
-    const h3Options = qualifiedLists.topThirds || [];
+    const h3Options = uniq([...(qualifiedLists.thirds || []), ...(qualifiedLists.fourths || [])]);
     return getDrawSlotLabels(normalizedBracketSize).reduce((acc, slot) => {
       const key = `${slot.roundKey}.${slot.matchId}.${slot.playerKey}`;
       acc[key] = slot.label.startsWith('N') ? firstOptions : h3Options;

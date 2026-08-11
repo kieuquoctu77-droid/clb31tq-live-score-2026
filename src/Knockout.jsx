@@ -32,14 +32,14 @@ function createDefaultKnockoutData(bracketSize = 16) {
 
   return {
     round16: {
-      t1: { title: 'T1', p1: 'N bốc thăm 1 - Nhất bảng', p2: 'H3 bốc thăm 1 - Hạng ba', winner: '', score1: '', score2: '' },
+      t1: { title: 'T1', p1: 'N1', p2: 'H3A', winner: '', score1: '', score2: '' },
       t2: { title: 'T2', p1: 'Nhì bảng A', p2: 'Nhì bảng D', winner: '', score1: '', score2: '' },
-      t3: { title: 'T3', p1: 'N bốc thăm 2 - Nhất bảng', p2: 'H3 bốc thăm 2 - Hạng ba', winner: '', score1: '', score2: '' },
+      t3: { title: 'T3', p1: 'N2', p2: 'H3B', winner: '', score1: '', score2: '' },
       t4: { title: 'T4', p1: 'Nhì bảng B', p2: 'Nhì bảng C', winner: '', score1: '', score2: '' },
-      t5: { title: 'T5', p1: 'N bốc thăm 3 - Nhất bảng', p2: 'H3 bốc thăm 3 - Hạng ba', winner: '', score1: '', score2: '' },
-      t6: { title: 'T6', p1: 'N còn lại 1 - Nhất bảng', p2: 'Nhì bảng E', winner: '', score1: '', score2: '' },
-      t7: { title: 'T7', p1: 'N bốc thăm 4 - Nhất bảng', p2: 'H3 bốc thăm 4 - Hạng ba', winner: '', score1: '', score2: '' },
-      t8: { title: 'T8', p1: 'N còn lại 2 - Nhất bảng', p2: 'Nhì bảng F', winner: '', score1: '', score2: '' },
+      t5: { title: 'T5', p1: 'N3', p2: 'H3C', winner: '', score1: '', score2: '' },
+      t6: { title: 'T6', p1: 'N4', p2: 'Nhì bảng E', winner: '', score1: '', score2: '' },
+      t7: { title: 'T7', p1: 'N5', p2: 'H3D', winner: '', score1: '', score2: '' },
+      t8: { title: 'T8', p1: 'N6', p2: 'Nhì bảng F', winner: '', score1: '', score2: '' },
     },
     quarter: {
       tk1: { title: 'TK1', p1: '', p2: '', winner: '', score1: '', score2: '' },
@@ -183,7 +183,7 @@ function uniq(list) {
 
 function isPlaceholder(value) {
   const text = String(value || '').toLowerCase();
-  return !text || text.includes('bảng') || text.includes('bốc thăm') || text.includes('còn lại') || text.includes('hạng');
+  return !text || /^n[1-6]$/.test(text) || /^h3[a-d]$/.test(text) || text.includes('bảng') || text.includes('bốc thăm') || text.includes('còn lại') || text.includes('hạng');
 }
 
 function getGroupDataMap(groupStageData = {}) {
@@ -309,6 +309,53 @@ function getSlotMeta(bracketSize = 16) {
     { roundKey: 'round16', matchId: 't8', playerKey: 'p1', allowedRanks: [1], matchNo: 8, quarterNo: 4, halfNo: 2 },
     { roundKey: 'round16', matchId: 't8', playerKey: 'p2', allowedRanks: [2], matchNo: 8, quarterNo: 4, halfNo: 2, fixedGroup: 'F' },
   ];
+}
+
+function getDrawSlotLabels(bracketSize = 16) {
+  if (Number(bracketSize) !== 16) return [];
+  return [
+    { label: 'N1', roundKey: 'round16', matchId: 't1', playerKey: 'p1', type: 'Nhất bảng' },
+    { label: 'N2', roundKey: 'round16', matchId: 't3', playerKey: 'p1', type: 'Nhất bảng' },
+    { label: 'N3', roundKey: 'round16', matchId: 't5', playerKey: 'p1', type: 'Nhất bảng' },
+    { label: 'N4', roundKey: 'round16', matchId: 't6', playerKey: 'p1', type: 'Nhất bảng' },
+    { label: 'N5', roundKey: 'round16', matchId: 't7', playerKey: 'p1', type: 'Nhất bảng' },
+    { label: 'N6', roundKey: 'round16', matchId: 't8', playerKey: 'p1', type: 'Nhất bảng' },
+    { label: 'H3A', roundKey: 'round16', matchId: 't1', playerKey: 'p2', type: 'Hạng 3 xuất sắc' },
+    { label: 'H3B', roundKey: 'round16', matchId: 't3', playerKey: 'p2', type: 'Hạng 3 xuất sắc' },
+    { label: 'H3C', roundKey: 'round16', matchId: 't5', playerKey: 'p2', type: 'Hạng 3 xuất sắc' },
+    { label: 'H3D', roundKey: 'round16', matchId: 't7', playerKey: 'p2', type: 'Hạng 3 xuất sắc' },
+  ];
+}
+
+function getPlayerEntryFromGroupMap(name, groupMap) {
+  const cleanName = String(name || '').trim();
+  if (!cleanName) return null;
+  for (const code of GROUP_CODES) {
+    const standings = groupMap[code]?.standings || [];
+    const index = standings.findIndex(item => item.name === cleanName);
+    if (index >= 0) {
+      return {
+        name: cleanName,
+        groupCode: code,
+        rank: index + 1,
+        rankText: index === 0 ? 'Nhất bảng' : index === 1 ? 'Nhì bảng' : index === 2 ? 'Hạng 3 bảng' : 'Hạng 4 bảng',
+      };
+    }
+  }
+  return null;
+}
+
+function getDrawNoteItems(data, groupMap, bracketSize = 16) {
+  return getDrawSlotLabels(bracketSize).map(slot => {
+    const value = data?.[slot.roundKey]?.[slot.matchId]?.[slot.playerKey] || '';
+    const entry = getPlayerEntryFromGroupMap(value, groupMap);
+    return {
+      ...slot,
+      value,
+      entry,
+      displayValue: entry ? `${entry.name} (${entry.rankText} ${entry.groupCode})` : value && !isPlaceholder(value) ? value : 'Chưa cập nhật',
+    };
+  });
 }
 
 function getEntryPool(entries, bracketSize) {
@@ -497,6 +544,7 @@ export default function Knockout({
 
   const groupMap = useMemo(() => getGroupDataMap(groupStageData), [groupStageData]);
   const qualifiedLists = useMemo(() => getQualifiedLists(groupMap), [groupMap]);
+  const drawNoteItems = useMemo(() => getDrawNoteItems(data, groupMap, normalizedBracketSize), [data, groupMap, normalizedBracketSize]);
 
   useEffect(() => {
     setData(defaultData);
@@ -744,10 +792,11 @@ export default function Knockout({
         />
       )}
 
+      {normalizedBracketSize === 16 && <DrawNotes items={drawNoteItems} />}
       <div className="mt-5 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
         {normalizedBracketSize === 8
           ? 'Ghi chú Serie B: hạng tư bảng A-F tự cập nhật từ vòng bảng. Hai vị trí H3 còn lại chọn bằng dropdown.'
-          : 'Ghi chú Serie A: các vị trí nhì bảng tự cập nhật. Các vị trí Nhất bảng/Hạng ba cần bốc thăm sẽ chọn bằng dropdown.'}
+          : 'Ghi chú Serie A: N1-N6 là thứ tự bốc thăm của 6 Nhất bảng. H3A-H3D là thứ tự bốc thăm của 4 VĐV hạng 3 xuất sắc nhất. Nhì bảng A-F được gắn cố định theo sơ đồ seed. Backtracking sẽ tự xếp để hạn chế tối đa VĐV cùng bảng gặp lại sớm.'}
       </div>
     </div>
   );
@@ -904,6 +953,48 @@ function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode
               <ThirdPlaceBox thirdPlace={data.thirdPlace} compact />
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DrawNotes({ items = [] }) {
+  const firstItems = items.filter(item => item.label.startsWith('N'));
+  const thirdItems = items.filter(item => item.label.startsWith('H3'));
+  if (!items.length) return null;
+  const renderItem = item => (
+    <div key={item.label} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+      <div className="flex items-center gap-2">
+        <span className="rounded-lg bg-slate-900 px-2 py-1 text-xs font-black text-white">{item.label}</span>
+        <span className="text-xs font-black text-slate-500">{item.type}</span>
+      </div>
+      <div className="mt-1 truncate text-sm font-black text-slate-900" title={item.displayValue}>
+        {item.displayValue}
+      </div>
+    </div>
+  );
+  return (
+    <div className="mt-5 rounded-3xl border border-yellow-200 bg-yellow-50 p-4 shadow-inner">
+      <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-lg font-black text-yellow-800">Ghi chú bốc thăm Serie A</div>
+          <div className="text-sm font-bold text-slate-600">
+            N1-N6 là thứ tự bốc thăm 6 Nhất bảng. H3A-H3D là thứ tự bốc thăm 4 Hạng 3 xuất sắc nhất.
+          </div>
+        </div>
+        <div className="rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm">
+          Tự cập nhật theo Firebase vòng bảng
+        </div>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div>
+          <div className="mb-2 text-sm font-black uppercase tracking-wide text-red-700">Nhất bảng</div>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{firstItems.map(renderItem)}</div>
+        </div>
+        <div>
+          <div className="mb-2 text-sm font-black uppercase tracking-wide text-blue-700">Hạng 3 xuất sắc</div>
+          <div className="grid gap-2 sm:grid-cols-2">{thirdItems.map(renderItem)}</div>
         </div>
       </div>
     </div>

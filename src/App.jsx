@@ -61,12 +61,14 @@ const defaultPlayers = ['Anthony', 'Leo', 'Hico', 'Banlan', 'Minh', 'Hung'];
 const ranks = ['A**', 'A1', 'A2', 'B1', 'B2', 'C1'];
 
 const matchTypes = [
-  'Vòng bảng',
-  'Tứ kết',
-  'Bán kết',
-  'Chung kết',
-  'Tranh hạng 3',
-  'Giao lưu',
+  'Vòng Bảng',
+  '1/8 Serie A',
+  'Tứ Kết Serie A',
+  'Bán Kết Serie A',
+  'Chung Kết Serie A',
+  'Tứ Kết Serie B',
+  'Bán Kết Serie B',
+  'Chung Kết Serie B',
   'Khác',
 ];
 

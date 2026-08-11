@@ -247,6 +247,7 @@ export default function App() {
   const [showGroupSetup, setShowGroupSetup] = useState(false);
   const [groupAssignments, setGroupAssignments] = useState({});
   const [activeGroupData, setActiveGroupData] = useState({});
+  const [allGroupStageData, setAllGroupStageData] = useState({});
   const [editingGroupAssignments, setEditingGroupAssignments] = useState({});
   const hydrated = useRef(false);
   const fileInputRef = useRef(null);
@@ -425,6 +426,24 @@ export default function App() {
     );
     return () => unsubscribe();
   }, [activeGroup, groupAssignments]);
+
+  useEffect(() => {
+    if (!database) {
+      setAllGroupStageData({});
+      return;
+    }
+    const allGroupsRef = ref(database, 'clb31tq/group-stage');
+    const unsubscribe = onValue(
+      allGroupsRef,
+      snapshot => {
+        setAllGroupStageData(snapshot.val() || {});
+      },
+      () => {
+        setAllGroupStageData({});
+      }
+    );
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (showGroupSetup) {
@@ -1032,6 +1051,118 @@ export default function App() {
         <div className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-600">
           Sau khi chọn, Knock Out sẽ lấy VĐV này làm <span className="font-black text-slate-900">Nhì bảng {activeGroup}</span> và tự đẩy các VĐV còn lại xuống hạng tiếp theo.
         </div>
+      </div>
+    );
+  };
+
+  const thirdPlaceCandidates = useMemo(() => {
+    return groupTabs
+      .map(group => {
+        const groupData = allGroupStageData[`group${group}`] || {};
+        const playersForGroup = Array.isArray(groupData.players) && groupData.players.length
+          ? groupData.players.filter(Boolean)
+          : groupAssignments[group] || [];
+        const standingsForGroup = computeGroupStandingsForManual(playersForGroup, groupData.results || {});
+        const third = standingsForGroup[2];
+        return third ? { ...third, group } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        if (b.setDiff !== a.setDiff) return b.setDiff - a.setDiff;
+        return a.name.localeCompare(b.name, 'vi');
+      });
+  }, [allGroupStageData, groupAssignments, groupTabs]);
+
+  const selectedTopThirds = Array.isArray(allGroupStageData.selectedTopThirds) ? allGroupStageData.selectedTopThirds : [];
+
+  const toggleTopThirdSelection = async name => {
+    if (!adminMode || !database) return;
+    const current = selectedTopThirds.filter(Boolean);
+    const exists = current.includes(name);
+    let next = exists ? current.filter(item => item !== name) : [...current, name];
+    if (next.length > 4) {
+      window.alert('Chỉ được chọn tối đa 4 VĐV hạng 3 xuất sắc cho Serie A.');
+      return;
+    }
+    await set(ref(database, 'clb31tq/group-stage/selectedTopThirds'), next);
+  };
+
+  const autoPickTopThirds = async () => {
+    if (!adminMode || !database) return;
+    const next = thirdPlaceCandidates.slice(0, 4).map(item => item.name);
+    await set(ref(database, 'clb31tq/group-stage/selectedTopThirds'), next);
+  };
+
+  const clearTopThirds = async () => {
+    if (!adminMode || !database) return;
+    await set(ref(database, 'clb31tq/group-stage/selectedTopThirds'), []);
+  };
+
+  const TopThirdSelectionPanel = () => {
+    if (!adminMode) return null;
+    return (
+      <div className="rounded-3xl border border-purple-200 bg-purple-50 p-4 shadow-inner">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-xl font-black text-purple-900">Chọn 4 VĐV hạng 3 xuất sắc</div>
+            <div className="text-sm font-semibold text-slate-600">
+              Danh sách bên dưới là 6 VĐV đang xếp hạng 3 của các bảng A-F. Anh tick chọn 4 VĐV vào Serie A, 2 VĐV còn lại sẽ dùng cho Serie B nếu cần.
+            </div>
+          </div>
+          <div className="rounded-xl bg-white px-3 py-2 text-sm font-black text-purple-800 shadow-sm">
+            Đã chọn {selectedTopThirds.length}/4
+          </div>
+        </div>
+        <div className="mb-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={autoPickTopThirds}
+            className="rounded-xl bg-purple-700 px-4 py-2 font-bold text-white hover:bg-purple-800"
+          >
+            Tự chọn theo chỉ số
+          </button>
+          <button
+            type="button"
+            onClick={clearTopThirds}
+            className="rounded-xl border border-purple-300 bg-white px-4 py-2 font-bold text-purple-800 hover:bg-purple-100"
+          >
+            Xóa chọn
+          </button>
+        </div>
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {thirdPlaceCandidates.map(item => {
+            const checked = selectedTopThirds.includes(item.name);
+            return (
+              <label
+                key={`${item.group}-${item.name}`}
+                className={classNames(
+                  'flex cursor-pointer items-center gap-3 rounded-2xl border p-3 shadow-sm transition',
+                  checked ? 'border-purple-600 bg-white ring-2 ring-purple-300' : 'border-purple-100 bg-white hover:bg-purple-100'
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleTopThirdSelection(item.name)}
+                  className="h-5 w-5 accent-purple-700"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-base font-black text-slate-900">{item.name}</div>
+                  <div className="mt-1 text-xs font-bold text-slate-500">
+                    Bảng {item.group} • Thắng {item.wins} • HS {item.setDiff > 0 ? `+${item.setDiff}` : item.setDiff} • Set {item.setFor}-{item.setAgainst}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-purple-100 px-2 py-1 text-xs font-black text-purple-800">H3{item.group}</div>
+              </label>
+            );
+          })}
+        </div>
+        {!thirdPlaceCandidates.length && (
+          <div className="rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-600">
+            Chưa có đủ dữ liệu vòng bảng để xác định VĐV hạng 3.
+          </div>
+        )}
       </div>
     );
   };
@@ -1729,6 +1860,7 @@ export default function App() {
 
             {adminMode && showGroupSetup && <GroupSetupPanel />}
             <ManualSecondPlacePanel />
+            <TopThirdSelectionPanel />
 
             <GroupStage
               database={database}

@@ -265,6 +265,7 @@ function getGroupDataMap(groupStageData = {}) {
       fourth: standings[3]?.name || '',
     };
   });
+  map._selectedTopThirds = Array.isArray(groupStageData.selectedTopThirds) ? groupStageData.selectedTopThirds.filter(Boolean) : [];
   return map;
 }
 
@@ -278,23 +279,29 @@ function getQualifiedLists(groupMap) {
     .sort((a, b) => {
       if (b.wins !== a.wins) return b.wins - a.wins;
       if (b.setDiff !== a.setDiff) return b.setDiff - a.setDiff;
-      if (b.setFor !== a.setFor) return b.setFor - a.setFor;
+      if (b.h2hWins !== a.h2hWins) return b.h2hWins - a.h2hWins;
+      if (b.h2hSetDiff !== a.h2hSetDiff) return b.h2hSetDiff - a.h2hSetDiff;
       return a.name.localeCompare(b.name, 'vi');
     });
-  const topThirds = thirds.slice(0, 4).map(item => item.name);
-  const remainingThirds = thirds.slice(4).map(item => item.name);
+  const allThirdNames = thirds.map(item => item.name);
+  const manualTopThirds = Array.isArray(groupMap._selectedTopThirds)
+    ? groupMap._selectedTopThirds.filter(name => allThirdNames.includes(name)).slice(0, 4)
+    : [];
+  const topThirds = manualTopThirds.length ? manualTopThirds : thirds.slice(0, 4).map(item => item.name);
+  const remainingThirds = allThirdNames.filter(name => !topThirds.includes(name));
   const fourths = GROUP_CODES.map(code => groupMap[code]?.fourth).filter(Boolean);
 
   return {
     firsts,
     seconds,
-    thirds: thirds.map(item => item.name),
+    thirds: allThirdNames,
     topThirds,
     remainingThirds,
     fourths,
-    all: uniq([...firsts, ...seconds, ...thirds.map(item => item.name), ...fourths]),
+    all: uniq([...firsts, ...seconds, ...allThirdNames, ...fourths]),
   };
 }
+
 
 function getPlayerGroup(name, groupMap) {
   const cleanName = String(name || '').trim();

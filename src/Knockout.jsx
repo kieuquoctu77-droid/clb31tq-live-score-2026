@@ -429,8 +429,9 @@ function autoAssignThirdPlaces(data, groupMap) {
     // Không chặn cùng nửa nhánh, vì nếu có 3 VĐV cùng bảng vào Serie A thì điều này có thể bất khả thi.
     return [...fixedEntries, ...currentPlaced].every(item => {
       if (!item.groupCode || item.groupCode !== entry.groupCode) return true;
+      // Chỉ cấm tái đấu trực tiếp ở nhánh 1/8
       if (item.slot.matchNo === slot.matchNo) return false;
-      if (item.slot.quarterNo === slot.quarterNo) return false;
+      // Quarter chỉ là ưu tiên, không còn là luật cứng
       return true;
     });
   };
@@ -440,7 +441,7 @@ function autoAssignThirdPlaces(data, groupMap) {
     [...fixedEntries, ...currentPlaced].forEach(item => {
       if (!item.groupCode || item.groupCode !== entry.groupCode) return;
       if (item.slot.matchNo === slot.matchNo) score -= 1000000;
-      else if (item.slot.quarterNo === slot.quarterNo) score -= 100000;
+      else if (item.slot.quarterNo === slot.quarterNo) score -= 500000;
       else if (item.slot.halfNo === slot.halfNo) score -= 1000;
       else score += 3000;
     });
@@ -481,7 +482,7 @@ function autoAssignThirdPlaces(data, groupMap) {
     return {
       ok: false,
       data: next,
-      message: 'Không tìm được phương án H3 để tránh gặp lại ở vòng 1/8 và tứ kết. Anh kiểm tra lại N1-N6 và 4 H3 đã chọn.',
+      message: 'Không tìm được phương án H3 hợp lệ. Anh kiểm tra lại dữ liệu H3 và N1-N6.',
     };
   }
 
@@ -492,7 +493,7 @@ function autoAssignThirdPlaces(data, groupMap) {
   return {
     ok: true,
     data: next,
-    message: 'Đã tự ghép H3 thành công: tránh gặp lại ở vòng 1/8 và tứ kết, đồng thời ưu tiên tách khác nửa nhánh nếu có thể.',
+    message: 'Đã tự ghép H3 thành công: cấm gặp lại ở vòng 1/8, ưu tiên tránh tứ kết và ưu tiên tách khác nửa nhánh.',
   };
 }
 

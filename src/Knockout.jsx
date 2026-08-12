@@ -442,8 +442,8 @@ function autoAssignThirdPlaces(data, groupMap) {
       if (!item.groupCode || item.groupCode !== entry.groupCode) return;
       if (item.slot.matchNo === slot.matchNo) score -= 1000000;
       else if (item.slot.quarterNo === slot.quarterNo) score -= 500000;
-      else if (item.slot.halfNo === slot.halfNo) score -= 1000;
-      else score += 3000;
+      else if (item.slot.halfNo === slot.halfNo) score -= 50000;
+      else score += 10000;
     });
     return score;
   };
@@ -655,12 +655,14 @@ function scoreCandidate(slot, candidate, placed) {
     if (item.entry.groupCode !== candidate.groupCode) return;
     if (item.slot.matchNo === slot.matchNo) score -= 100000;
     if (item.slot.quarterNo === slot.quarterNo) score -= 5000;
-    if (item.slot.halfNo === slot.halfNo) score -= 700;
+    if (item.slot.halfNo === slot.halfNo) score -= 20000;
   });
 
   // Ưu tiên rải các VĐV cùng bảng sang 2 nhánh khác nhau để nếu gặp lại thì càng sâu càng tốt.
   const sameGroupPlaced = placed.filter(item => item.entry.groupCode === candidate.groupCode);
-  if (sameGroupPlaced.length && sameGroupPlaced.every(item => item.slot.halfNo !== slot.halfNo)) score += 200;
+  if (sameGroupPlaced.length && sameGroupPlaced.every(item => item.slot.halfNo !== slot.halfNo)) {
+    score += 5000;
+  }
   if (slot.fixedGroup && slot.fixedGroup === candidate.groupCode) score += 100;
   return score;
 }
@@ -724,8 +726,8 @@ function buildAutoSeedMap(groupMap, bracketSize) {
         if (a.entry.groupCode !== b.entry.groupCode) continue;
         if (a.slot.matchNo === b.slot.matchNo) score -= 1000000;
         else if (a.slot.quarterNo === b.slot.quarterNo) score -= 100000;
-        else if (a.slot.halfNo === b.slot.halfNo) score -= 1000;
-        else score += 3000;
+        else if (a.slot.halfNo === b.slot.halfNo) score -= 50000;
+        else score += 10000;
       }
     }
     return score;

@@ -1923,7 +1923,7 @@ export default function App() {
             : activePage === 'knockout'
             ? 'Knock Out Serie A nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
             : activePage === 'schedule'
-            ? 'Lịch thi đấu tự động xếp theo 4 bàn cố định, bắt đầu mặc định từ 08:00.'
+            ? 'Lịch thi đấu tự động xếp theo từng cặp trên toàn bộ bảng, 4 bàn cố định và bắt đầu mặc định từ 08:00.'
             : 'Knock Out Serie B nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
           : activePage === 'live'
           ? 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'

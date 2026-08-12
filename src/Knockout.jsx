@@ -820,7 +820,7 @@ export default function Knockout({
   const [connected, setConnected] = useState(false);
   const [groupStageData, setGroupStageData] = useState({});
 
-  const ROW_HEIGHT_16 = 172;
+  const ROW_HEIGHT_16 = 320;
   const ROW_HEIGHT_8 = 300;
 
   const groupMap = useMemo(() => getGroupDataMap(groupStageData), [groupStageData]);
@@ -1134,14 +1134,14 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
   return (
     <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-red-100">
       <div className="min-w-[1080px]">
-        <div className="mb-4 grid grid-cols-[260px_230px_230px_250px] gap-x-8">
+        <div className="mb-4 grid grid-cols-[320px_260px_260px_280px] gap-x-16">
           <RoundTitle color="text-red-800">VÒNG 1/8</RoundTitle>
           <RoundTitle color="text-blue-800">TỨ KẾT</RoundTitle>
           <RoundTitle color="text-emerald-800">BÁN KẾT</RoundTitle>
           <RoundTitle color="text-yellow-700">CHUNG KẾT</RoundTitle>
         </div>
         <div
-          className="grid grid-cols-[260px_230px_230px_250px] gap-x-8"
+          className="grid grid-cols-[320px_260px_260px_280px] gap-x-16"
           style={{ gridTemplateRows: `repeat(8, ${rowHeight}px)` }}
         >
           {round16Entries.map(([id, match], index) => (
@@ -1400,7 +1400,7 @@ function VerticalMatchCard({
     <div
       className={classNames(
         'relative z-10 w-full rounded-2xl border-2 bg-white shadow-md transition-all',
-        size === 'small' ? 'min-h-[150px] p-2' : 'min-h-[220px] p-3',
+        size === 'small' ? 'min-h-[220px] p-3' : 'min-h-[220px] p-3',
         match.winner ? 'border-emerald-400' : 'border-slate-200',
         finalMatch && 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200'
       )}

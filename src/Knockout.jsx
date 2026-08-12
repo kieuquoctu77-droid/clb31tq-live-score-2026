@@ -827,6 +827,15 @@ export default function Knockout({
   const qualifiedLists = useMemo(() => getQualifiedLists(groupMap), [groupMap]);
   const drawNoteItems = useMemo(() => getDrawNoteItems(data, groupMap, normalizedBracketSize), [data, groupMap, normalizedBracketSize]);
   const drawSlotLabelMap = useMemo(() => getDrawSlotLabelMap(normalizedBracketSize), [normalizedBracketSize]);
+  const selectedDrawPlayers = useMemo(() => {
+    const selected = [];
+    ['t1.p1','t3.p1','t5.p1','t6.p1','t7.p1','t8.p1','t1.p2','t3.p2','t5.p2','t7.p2'].forEach(k=>{
+      const [m,p]=k.split('.');
+      const v=data?.round16?.[m]?.[p];
+      if(v && !isPlaceholder(v)) selected.push(v);
+    });
+    return selected;
+  }, [data]);
   const playerOptionsBySlot = useMemo(() => {
     if (normalizedBracketSize !== 16) return {};
     const firstOptions = qualifiedLists.firsts || [];
@@ -1147,6 +1156,7 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
                 playerOptions={playerOptions}
                 slotLabelMap={slotLabelMap}
                 playerOptionsBySlot={playerOptionsBySlot}
+                selectedDrawPlayers={selectedDrawPlayers}
                 size="small"
               />
               <RightConnector />
@@ -1372,6 +1382,7 @@ function VerticalMatchCard({
   playerOptions = [],
   slotLabelMap = {},
   playerOptionsBySlot = {},
+  selectedDrawPlayers = [],
   color = 'red',
   finalMatch = false,
   size = 'normal',
@@ -1380,7 +1391,8 @@ function VerticalMatchCard({
   const getSlotLabel = playerKey => slotLabelMap[`${roundKey}.${matchId}.${playerKey}`] || '';
   const getSlotOptions = playerKey => {
     const slotKey = `${roundKey}.${matchId}.${playerKey}`;
-    return uniq([match[playerKey], ...(playerOptionsBySlot[slotKey] || playerOptions)]);
+    const currentPlayer = match[playerKey];
+    return uniq((playerOptionsBySlot[slotKey] || playerOptions).filter(player => player === currentPlayer || !selectedDrawPlayers.includes(player)));
   };
 
   return (

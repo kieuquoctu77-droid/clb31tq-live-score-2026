@@ -822,7 +822,7 @@ export default function Knockout({
   const [connected, setConnected] = useState(false);
   const [groupStageData, setGroupStageData] = useState({});
 
-  const ROW_HEIGHT_16 = 320;
+  const ROW_HEIGHT_16 = 240;
   const ROW_HEIGHT_8 = 300;
 
   const groupMap = useMemo(() => getGroupDataMap(groupStageData), [groupStageData]);

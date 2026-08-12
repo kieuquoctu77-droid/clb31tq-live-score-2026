@@ -1117,6 +1117,7 @@ export default function Knockout({
           playerOptions={qualifiedLists.all}
           slotLabelMap={drawSlotLabelMap}
           playerOptionsBySlot={playerOptionsBySlot}
+          selectedDrawPlayers={selectedDrawPlayers}
         />
       )}
 
@@ -1129,7 +1130,7 @@ export default function Knockout({
   );
 }
 
-function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore, playerOptions, slotLabelMap = {}, playerOptionsBySlot = {} }) {
+function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore, playerOptions, slotLabelMap = {}, playerOptionsBySlot = {}, selectedDrawPlayers = [] }) {
   return (
     <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-red-100">
       <div className="min-w-[1080px]">

@@ -385,7 +385,11 @@ function getRound16PlacedEntries(data, groupMap, excludeH3Slots = true) {
       if (!name || isPlaceholder(name)) return null;
       if (excludeH3Slots && h3Keys.has(`${matchId}.${playerKey}`)) return null;
       const meta = getSlotMeta(16).find(slot => slot.matchId === matchId && slot.playerKey === playerKey);
-      return { name, groupCode: getPlayerGroup(name, groupMap), slot: meta || { matchId, playerKey, matchNo: 0, quarterNo: 0, halfNo: 0 } };
+      return {
+        name,
+        groupCode: getPlayerGroup(name, groupMap),
+        slot: meta || { matchId, playerKey, matchNo: 0, quarterNo: 0, halfNo: 0 },
+      };
     }).filter(Boolean)
   );
 }
@@ -394,13 +398,19 @@ function autoAssignThirdPlaces(data, groupMap) {
   const next = prepareKnockoutData(cloneData(data), 16);
   const h3Slots = getH3AutoSlots();
   const h3Entries = uniq(
-    h3Slots.map(slot => next[slot.roundKey]?.[slot.matchId]?.[slot.playerKey]).filter(name => name && !isPlaceholder(name))
+    h3Slots
+      .map(slot => next[slot.roundKey]?.[slot.matchId]?.[slot.playerKey])
+      .filter(name => name && !isPlaceholder(name))
   )
     .map(name => ({ name, groupCode: getPlayerGroup(name, groupMap) }))
     .filter(entry => entry.name && entry.groupCode);
 
   if (h3Entries.length !== h3Slots.length) {
-    return { ok: false, data: next, message: 'Anh cần chọn đủ 4 VĐV H3A-H3D trước khi bấm Tự Ghép H3.' };
+    return {
+      ok: false,
+      data: next,
+      message: 'Anh cần chọn đủ 4 VĐV H3A-H3D trước khi bấm Tự Ghép H3.',
+    };
   }
 
   const fixedEntries = getRound16PlacedEntries(next, groupMap, true);
@@ -408,10 +418,23 @@ function autoAssignThirdPlaces(data, groupMap) {
   const placed = [];
   let best = { placed: [], score: -Infinity };
 
-  const canPlaceHard = (slot, entry) => {
+  const canPlaceFinalOnly = (slot, entry, currentPlaced) => {
     const opponentName = next[slot.roundKey]?.[slot.matchId]?.[slot.opponentKey] || '';
     const opponentGroup = getPlayerGroup(opponentName, groupMap);
-    return !(opponentGroup && opponentGroup === entry.groupCode);
+
+    // Luật cứng 1: không được gặp Nhất bảng cùng bảng ngay vòng 1/8.
+    if (opponentGroup && opponentGroup === entry.groupCode) return false;
+
+    // Luật cứng 2: không được cùng tứ kết với bất kỳ VĐV cùng bảng nào.
+    // Luật cứng 3: không được cùng nửa nhánh với bất kỳ VĐV cùng bảng nào.
+    // Nếu đạt luật này, VĐV cùng bảng chỉ có thể gặp lại ở chung kết.
+    return [...fixedEntries, ...currentPlaced].every(item => {
+      if (!item.groupCode || item.groupCode !== entry.groupCode) return true;
+      if (item.slot.matchNo === slot.matchNo) return false;
+      if (item.slot.quarterNo === slot.quarterNo) return false;
+      if (item.slot.halfNo === slot.halfNo) return false;
+      return true;
+    });
   };
 
   const scorePlacement = (slot, entry, currentPlaced) => {
@@ -420,7 +443,7 @@ function autoAssignThirdPlaces(data, groupMap) {
       if (!item.groupCode || item.groupCode !== entry.groupCode) return;
       if (item.slot.matchNo === slot.matchNo) score -= 1000000;
       else if (item.slot.quarterNo === slot.quarterNo) score -= 100000;
-      else if (item.slot.halfNo === slot.halfNo) score -= 1000;
+      else if (item.slot.halfNo === slot.halfNo) score -= 50000;
       else score += 3000;
     });
     return score;
@@ -437,12 +460,14 @@ function autoAssignThirdPlaces(data, groupMap) {
       if (score > best.score) best = { placed: placed.map(item => ({ ...item })), score };
       return;
     }
+
     const slot = h3Slots[index];
     const candidates = h3Entries
       .filter(entry => !used.has(entry.name))
-      .filter(entry => canPlaceHard(slot, entry))
+      .filter(entry => canPlaceFinalOnly(slot, entry, placed))
       .map(entry => ({ entry, score: scorePlacement(slot, entry, placed) }))
       .sort((a, b) => b.score - a.score || a.entry.name.localeCompare(b.entry.name, 'vi'));
+
     candidates.forEach(({ entry }) => {
       used.add(entry.name);
       placed.push({ slot, entry });
@@ -455,14 +480,22 @@ function autoAssignThirdPlaces(data, groupMap) {
   search(0);
 
   if (best.placed.length !== h3Slots.length) {
-    return { ok: false, data: next, message: 'Không tìm được phương án ghép H3 hợp lệ để tránh cùng bảng. Anh kiểm tra lại N1-N6 và 4 H3 đã chọn.' };
+    return {
+      ok: false,
+      data: next,
+      message: 'Không tìm được phương án H3 để VĐV cùng bảng chỉ có thể gặp ở chung kết. Trường hợp này thường xảy ra khi một bảng có 3 VĐV cùng vào Serie A hoặc N1-N6 đang nằm khiến cả 2 nửa nhánh đều đã có VĐV cùng bảng.',
+    };
   }
 
   best.placed.forEach(({ slot, entry }) => {
     next[slot.roundKey][slot.matchId][slot.playerKey] = entry.name;
   });
 
-  return { ok: true, data: next, message: 'Đã tự ghép H3 thành công: tránh cùng bảng ở vòng 1/8 và ưu tiên tách nhánh xa nhất có thể.' };
+  return {
+    ok: true,
+    data: next,
+    message: 'Đã tự ghép H3 thành công: VĐV cùng bảng được tách khác nửa nhánh, nên nếu gặp lại thì chỉ có thể gặp ở chung kết.',
+  };
 }
 
 function getQualifiedEntries(groupMap) {
@@ -1082,7 +1115,7 @@ export default function Knockout({
       <div className="mt-5 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
         {normalizedBracketSize === 8
           ? 'Ghi chú Serie B: hạng tư bảng A-F tự cập nhật từ vòng bảng. Hai vị trí H3 còn lại chọn bằng dropdown.'
-          : 'Ghi chú Serie A: N1-N6 là thứ tự bốc thăm của 6 Nhất bảng. Chọn đủ 4 H3 rồi bấm Tự Ghép H3 để app tự hoán đổi H3A-H3D, tránh H3 gặp Nhất bảng cùng bảng ở vòng 1/8 và ưu tiên tách nhánh xa nhất có thể. H2A-H2F là các VĐV nhì bảng A-F, nếu có bốc thăm hạng nhì ở vòng bảng thì tự nhận kết quả đã chọn.'}
+          : 'Ghi chú Serie A: N1-N6 là thứ tự bốc thăm của 6 Nhất bảng. Chọn đủ 4 H3 rồi bấm Tự Ghép H3 để app tự hoán đổi H3A-H3D, tách VĐV cùng bảng sang khác nửa nhánh. Nếu hợp lệ, họ chỉ có thể gặp lại ở chung kết, không gặp ở bán kết.'}
       </div>
     </div>
   );

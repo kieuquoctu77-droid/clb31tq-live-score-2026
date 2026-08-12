@@ -418,7 +418,7 @@ function autoAssignThirdPlaces(data, groupMap) {
   const placed = [];
   let best = { placed: [], score: -Infinity };
 
-  const canPlaceFinalOnly = (slot, entry, currentPlaced) => {
+  const canPlaceNoEarlyRematch = (slot, entry, currentPlaced) => {
     const opponentName = next[slot.roundKey]?.[slot.matchId]?.[slot.opponentKey] || '';
     const opponentGroup = getPlayerGroup(opponentName, groupMap);
 
@@ -426,13 +426,11 @@ function autoAssignThirdPlaces(data, groupMap) {
     if (opponentGroup && opponentGroup === entry.groupCode) return false;
 
     // Luật cứng 2: không được cùng tứ kết với bất kỳ VĐV cùng bảng nào.
-    // Luật cứng 3: không được cùng nửa nhánh với bất kỳ VĐV cùng bảng nào.
-    // Nếu đạt luật này, VĐV cùng bảng chỉ có thể gặp lại ở chung kết.
+    // Không chặn cùng nửa nhánh, vì nếu có 3 VĐV cùng bảng vào Serie A thì điều này có thể bất khả thi.
     return [...fixedEntries, ...currentPlaced].every(item => {
       if (!item.groupCode || item.groupCode !== entry.groupCode) return true;
       if (item.slot.matchNo === slot.matchNo) return false;
       if (item.slot.quarterNo === slot.quarterNo) return false;
-      if (item.slot.halfNo === slot.halfNo) return false;
       return true;
     });
   };
@@ -443,7 +441,7 @@ function autoAssignThirdPlaces(data, groupMap) {
       if (!item.groupCode || item.groupCode !== entry.groupCode) return;
       if (item.slot.matchNo === slot.matchNo) score -= 1000000;
       else if (item.slot.quarterNo === slot.quarterNo) score -= 100000;
-      else if (item.slot.halfNo === slot.halfNo) score -= 50000;
+      else if (item.slot.halfNo === slot.halfNo) score -= 1000;
       else score += 3000;
     });
     return score;
@@ -464,7 +462,7 @@ function autoAssignThirdPlaces(data, groupMap) {
     const slot = h3Slots[index];
     const candidates = h3Entries
       .filter(entry => !used.has(entry.name))
-      .filter(entry => canPlaceFinalOnly(slot, entry, placed))
+      .filter(entry => canPlaceNoEarlyRematch(slot, entry, placed))
       .map(entry => ({ entry, score: scorePlacement(slot, entry, placed) }))
       .sort((a, b) => b.score - a.score || a.entry.name.localeCompare(b.entry.name, 'vi'));
 
@@ -483,7 +481,7 @@ function autoAssignThirdPlaces(data, groupMap) {
     return {
       ok: false,
       data: next,
-      message: 'Không tìm được phương án H3 để VĐV cùng bảng chỉ có thể gặp ở chung kết. Trường hợp này thường xảy ra khi một bảng có 3 VĐV cùng vào Serie A hoặc N1-N6 đang nằm khiến cả 2 nửa nhánh đều đã có VĐV cùng bảng.',
+      message: 'Không tìm được phương án H3 để tránh gặp lại ở vòng 1/8 và tứ kết. Anh kiểm tra lại N1-N6 và 4 H3 đã chọn.',
     };
   }
 
@@ -494,7 +492,7 @@ function autoAssignThirdPlaces(data, groupMap) {
   return {
     ok: true,
     data: next,
-    message: 'Đã tự ghép H3 thành công: VĐV cùng bảng được tách khác nửa nhánh, nên nếu gặp lại thì chỉ có thể gặp ở chung kết.',
+    message: 'Đã tự ghép H3 thành công: tránh gặp lại ở vòng 1/8 và tứ kết, đồng thời ưu tiên tách khác nửa nhánh nếu có thể.',
   };
 }
 
@@ -1115,7 +1113,7 @@ export default function Knockout({
       <div className="mt-5 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
         {normalizedBracketSize === 8
           ? 'Ghi chú Serie B: hạng tư bảng A-F tự cập nhật từ vòng bảng. Hai vị trí H3 còn lại chọn bằng dropdown.'
-          : 'Ghi chú Serie A: N1-N6 là thứ tự bốc thăm của 6 Nhất bảng. Chọn đủ 4 H3 rồi bấm Tự Ghép H3 để app tự hoán đổi H3A-H3D, tách VĐV cùng bảng sang khác nửa nhánh. Nếu hợp lệ, họ chỉ có thể gặp lại ở chung kết, không gặp ở bán kết.'}
+          : 'Ghi chú Serie A: N1-N6 là thứ tự bốc thăm của 6 Nhất bảng. Chọn đủ 4 H3 rồi bấm Tự Ghép H3 để app tự hoán đổi H3A-H3D. App bắt buộc tránh gặp lại ở vòng 1/8 và tứ kết, đồng thời ưu tiên tách khác nửa nhánh nếu có thể; nếu bắt buộc thì mới cho phép gặp lại ở bán kết.'}
       </div>
     </div>
   );

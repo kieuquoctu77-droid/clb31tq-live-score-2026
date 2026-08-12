@@ -4,6 +4,7 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase, onValue, ref, set, remove } from 'firebase/database';
 import GroupStage from './GroupStage';
 import Knockout from './Knockout';
+import ScheduleTab from './ScheduleTab';
 import {
   Plus,
   Minus,
@@ -519,6 +520,12 @@ export default function App() {
       setEditingPlayers(players);
     }
   }, [showPlayerManager, players]);
+
+  useEffect(() => {
+    if (!adminMode && activePage === 'schedule') {
+      setActivePage('live');
+    }
+  }, [adminMode, activePage]);
 
   const saveData = async nextData => {
     const payload = {
@@ -1836,7 +1843,12 @@ export default function App() {
   </div>
 
   <div className="space-y-2 p-2 sm:space-y-3 sm:p-4">
-    <div className="sticky top-1 z-30 grid grid-cols-4 gap-1 rounded-2xl bg-white/95 p-1.5 shadow-lg ring-1 ring-slate-200 sm:top-2 sm:gap-2 sm:p-2">
+    <div
+      className={classNames(
+        'sticky top-1 z-30 grid gap-1 rounded-2xl bg-white/95 p-1.5 shadow-lg ring-1 ring-slate-200 sm:top-2 sm:gap-2 sm:p-2',
+        adminMode ? 'grid-cols-5' : 'grid-cols-4'
+      )}
+    >
       <button
         onClick={() => setActivePage('live')}
         className={classNames(
@@ -1884,6 +1896,20 @@ export default function App() {
       >
         Knock Out Serie B
       </button>
+
+      {adminMode && (
+        <button
+          onClick={() => setActivePage('schedule')}
+          className={classNames(
+            'w-full rounded-xl px-1 py-1.5 text-center text-[10px] font-black leading-tight sm:px-4 sm:py-2 sm:text-sm',
+            activePage === 'schedule'
+              ? 'bg-amber-600 text-white'
+              : 'border border-slate-300 bg-white text-slate-700'
+          )}
+        >
+          📅 Lịch Thi Đấu
+        </button>
+      )}
     </div>
 
     <div className="hidden flex-col gap-3 sm:flex lg:flex-row lg:items-center lg:justify-between">
@@ -1896,6 +1922,8 @@ export default function App() {
             ? 'Vòng bảng: chọn Bảng A-F để xem từng bảng, nhập kết quả theo từng ô đối đầu và tự tính xếp hạng.'
             : activePage === 'knockout'
             ? 'Knock Out Serie A nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
+            : activePage === 'schedule'
+            ? 'Lịch thi đấu tự động xếp theo 4 bàn cố định, bắt đầu mặc định từ 08:00.'
             : 'Knock Out Serie B nhập tỷ số để tự chuyển người thắng lên vòng tiếp theo.'
           : activePage === 'live'
           ? 'Đây là link xem cho ACE CLB. Không cần bấm gì, tỷ số sẽ tự cập nhật.'
@@ -1903,6 +1931,8 @@ export default function App() {
           ? 'Đây là trang xem vòng bảng. Chọn Bảng A-F để xem từng bảng.'
           : activePage === 'knockout'
           ? 'Đây là trang xem sơ đồ Knock Out Serie A. Kết quả sẽ tự cập nhật realtime.'
+          : activePage === 'schedule'
+          ? 'Lịch thi đấu chỉ hiển thị trong Admin mode.'
           : 'Đây là trang xem sơ đồ Knock Out Serie B. Kết quả sẽ tự cập nhật realtime.'}
       </div>
 
@@ -2026,7 +2056,7 @@ export default function App() {
             title="SERIE A"
             bracketSize={16}
           />
-        ) : (
+        ) : activePage === 'knockoutB' ? (
           <Knockout
             database={database}
             adminMode={adminMode}
@@ -2034,11 +2064,16 @@ export default function App() {
             title="SERIE B"
             bracketSize={8}
           />
-        )}
+        ) : activePage === 'schedule' && adminMode ? (
+          <ScheduleTab
+            groupStageData={allGroupStageData}
+            fallbackGroupAssignments={groupAssignments}
+          />
+        ) : null}
 
         <div className="mt-5 rounded-3xl bg-white/90 p-4 text-center text-sm font-semibold text-slate-600 shadow-xl">
           <div className="flex items-center justify-center gap-2">
-            <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định và có thêm trang vòng bảng, Knock Out Serie A và Knock Out Serie B.
+            <Table2 size={16} /> CLB đang hiển thị tối đa 4 bàn cố định và có thêm trang vòng bảng, Knock Out Serie A, Knock Out Serie B và Lịch Thi Đấu trong Admin mode.
           </div>
         </div>
       </div>

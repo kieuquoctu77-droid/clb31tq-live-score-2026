@@ -19,3 +19,47 @@ body {
 button, input, select {
   font-family: inherit;
 }
+@media (max-width: 900px) {
+
+  .schedule-summary-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .schedule-summary-box strong {
+    font-size: 24px;
+  }
+
+  .compact-table-wrap {
+    padding: 10px;
+  }
+
+  .compact-table-head,
+  .compact-time-row {
+    display: block;
+    min-width: auto;
+  }
+
+  .compact-table-head {
+    display: none;
+  }
+
+  .compact-time-cell {
+    min-height: 52px;
+    margin-bottom: 8px;
+    font-size: 20px;
+  }
+
+  .compact-match-card {
+    min-height: auto;
+    margin-bottom: 8px;
+    padding: 10px;
+  }
+
+  .compact-player-line {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    font-size: 14px;
+  }
+}

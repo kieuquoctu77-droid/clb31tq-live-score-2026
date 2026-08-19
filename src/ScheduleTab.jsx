@@ -126,7 +126,7 @@ function buildSchedule({
   fallbackGroupAssignments = {},
   tableCount = 4,
   startTime = '08:00',
-  matchDuration = 15,
+  matchDuration = 20,
 }) {
   const orderedMatches = buildGroupMatches(groupStageData, fallbackGroupAssignments);
   const startMinutes = timeToMinutes(startTime);
@@ -169,7 +169,7 @@ function groupScheduleByTime(schedule = [], tableCount = 4) {
 function MatchCard({ match, table }) {
   if (!match) {
     return (
-      <div className="min-h-[132px] rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-3 text-center text-sm font-bold text-slate-400">
+      <div className="min-h-[128px] rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-3 text-center text-sm font-bold text-slate-400">
         <div className="mb-2 text-xs font-black uppercase text-slate-400">Bàn {table}</div>
         Trống
       </div>
@@ -179,7 +179,7 @@ function MatchCard({ match, table }) {
   const style = GROUP_STYLE[match.group] || GROUP_STYLE.A;
 
   return (
-    <div className={`min-h-[132px] rounded-2xl border-2 p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${style.card}`}>
+    <div className={`min-h-[128px] rounded-2xl border-2 p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${style.card}`}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className={`rounded-full px-2.5 py-1 text-xs font-black ${style.badge}`}>
           Bảng {match.group}
@@ -195,9 +195,9 @@ function MatchCard({ match, table }) {
       </div>
 
       <div className="rounded-xl bg-white/85 px-3 py-2 text-sm font-black leading-snug text-slate-950">
-        <div className="truncate">{match.p1}</div>
+        <div className="truncate" title={match.p1}>{match.p1}</div>
         <div className="my-0.5 text-xs font-black uppercase text-slate-400">vs</div>
-        <div className="truncate">{match.p2}</div>
+        <div className="truncate" title={match.p2}>{match.p2}</div>
       </div>
     </div>
   );
@@ -319,19 +319,21 @@ export default function ScheduleTab({
               </div>
             </div>
 
-            <div
-              className="grid gap-3 p-3"
-              style={{
-                gridTemplateColumns: `repeat(${tableCount}, minmax(180px, 1fr))`,
-              }}
-            >
-              {slot.tables.map(item => (
-                <MatchCard
-                  key={`${slot.time}-table-${item.table}`}
-                  table={item.table}
-                  match={item.match}
-                />
-              ))}
+            <div className="overflow-x-auto p-3">
+              <div
+                className="grid min-w-[760px] gap-3"
+                style={{
+                  gridTemplateColumns: `repeat(${tableCount}, minmax(180px, 1fr))`,
+                }}
+              >
+                {slot.tables.map(item => (
+                  <MatchCard
+                    key={`${slot.time}-table-${item.table}`}
+                    table={item.table}
+                    match={item.match}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         ))}

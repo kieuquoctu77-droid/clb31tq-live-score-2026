@@ -152,19 +152,27 @@ function MatchCell({ match, table }) {
   return (
     <div className={`min-h-[112px] rounded-2xl border-2 p-3 shadow-sm ${style.card}`}>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className={`rounded-full px-2.5 py-1 text-xs font-black ${style.badge}`}>
-          Bảng {match.group}
-        </span>
-        <span className="text-sm font-black text-slate-700">Bàn {table}</span>
-        <span className={`text-base font-black ${style.text}`}>{match.pairLabel}</span>
-      </div>
+  <span className={`rounded-full px-2.5 py-1 text-xs font-black ${style.badge}`}>
+    Bảng {match.group}
+  </span>
 
-      <div
-        className="rounded-xl bg-white/90 px-3 py-2 text-center text-sm font-black text-slate-950 truncate"
-        title={`${match.p1} VS ${match.p2}`}
-      >
-        {match.p1} <span className="text-slate-400">VS</span> {match.p2}
-      </div>
+  <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs font-black text-slate-700">
+    Bàn {table}
+  </span>
+
+  <span className={`text-base font-black ${style.text}`}>
+    {match.pairLabel}
+  </span>
+</div>
+
+<div
+  className="rounded-xl bg-white/90 px-3 py-2 text-sm font-black leading-snug text-slate-950"
+  title={`${match.p1} VS ${match.p2}`}
+>
+  <div>{match.p1}</div>
+  <div className="text-xs font-black uppercase text-slate-400">VS</div>
+  <div>{match.p2}</div>
+</div>
     </div>
   );
 }

@@ -89,3 +89,81 @@ button, input, select {
     font-size: 22px;
   }
 }
+@media (max-width: 900px) {
+  .compact-table-wrap {
+    padding: 8px;
+    overflow: visible;
+  }
+
+  .compact-table-head {
+    display: none;
+  }
+
+  .compact-time-row {
+    display: block;
+    min-width: 100%;
+    margin-bottom: 14px;
+  }
+
+  .compact-time-cell {
+    width: 100%;
+    min-height: 46px;
+    margin-bottom: 8px;
+    border-radius: 14px;
+    font-size: 20px;
+  }
+
+  .compact-match-card {
+    width: 100%;
+    min-height: auto;
+    margin-bottom: 8px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .compact-match-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 7px;
+  }
+
+  .compact-match-line span {
+    font-size: 12px;
+    padding: 5px 9px;
+    white-space: nowrap;
+  }
+
+  .compact-match-line strong {
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .compact-player-line {
+    font-size: 14px;
+    line-height: 1.35;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    word-break: normal;
+  }
+
+  .schedule-summary-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .schedule-summary-box {
+    min-height: 68px;
+    border-radius: 14px;
+  }
+
+  .schedule-summary-box span {
+    font-size: 11px;
+  }
+
+  .schedule-summary-box strong {
+    font-size: 22px;
+  }
+}

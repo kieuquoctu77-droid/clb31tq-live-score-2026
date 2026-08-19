@@ -267,3 +267,99 @@ button, input, select {
     line-height: 1.15;
   }
 }
+/* ===== CSS cho ScheduleTab dạng gọn ===== */
+.schedule-clean {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 18px;
+}
+
+.schedule-clean-title {
+  margin: 0 0 18px;
+  color: #b45309;
+  font-size: 32px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.schedule-time-block {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+
+.schedule-time-title {
+  background: #020617;
+  color: #facc15;
+  font-size: 26px;
+  font-weight: 900;
+  padding: 12px 18px;
+  line-height: 1;
+}
+
+.schedule-match-list {
+  padding: 10px 14px 14px;
+}
+
+.schedule-match-item {
+  border-left: 6px solid #2563eb;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 11px 14px;
+  margin-top: 10px;
+}
+
+.schedule-match-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #334155;
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 5px;
+}
+
+.schedule-match-meta strong {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.schedule-players {
+  color: #020617;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.group-A { border-left-color: #2563eb; background: #eff6ff; }
+.group-B { border-left-color: #ea580c; background: #fff7ed; }
+.group-C { border-left-color: #7e22ce; background: #faf5ff; }
+.group-D { border-left-color: #be123c; background: #fff1f2; }
+.group-E { border-left-color: #047857; background: #ecfdf5; }
+.group-F { border-left-color: #ca8a04; background: #fefce8; }
+
+@media (max-width: 768px) {
+  .schedule-clean {
+    padding: 12px;
+  }
+
+  .schedule-clean-title {
+    font-size: 26px;
+  }
+
+  .schedule-time-title {
+    font-size: 24px;
+  }
+
+  .schedule-match-meta {
+    font-size: 14px;
+  }
+
+  .schedule-players {
+    font-size: 16px;
+  }
+}

@@ -155,17 +155,15 @@ function MatchCell({ match, table }) {
         <span className={`rounded-full px-2.5 py-1 text-xs font-black ${style.badge}`}>
           Bảng {match.group}
         </span>
+        <span className="text-sm font-black text-slate-700">Bàn {table}</span>
         <span className={`text-base font-black ${style.text}`}>{match.pairLabel}</span>
       </div>
 
-      <div className="mb-2 text-xs font-black uppercase text-slate-500">
-      
-      </div>
-
-      <div className="rounded-xl bg-white/90 px-3 py-2 text-sm font-black leading-snug text-slate-950">
-        <div className="truncate" title={match.p1}>{match.p1}</div>
-        <div className="my-0.5 text-xs font-black uppercase text-slate-400">vs</div>
-        <div className="truncate" title={match.p2}>{match.p2}</div>
+      <div
+        className="rounded-xl bg-white/90 px-3 py-2 text-center text-sm font-black text-slate-950 truncate"
+        title={`${match.p1} VS ${match.p2}`}
+      >
+        {match.p1} <span className="text-slate-400">VS</span> {match.p2}
       </div>
     </div>
   );
@@ -174,6 +172,7 @@ function MatchCell({ match, table }) {
 export default function ScheduleTab({
   groupStageData = {},
   fallbackGroupAssignments = {},
+  adminMode = false,
 }) {
   const [startTime, setStartTime] = useState('08:00');
   const [tableCount, setTableCount] = useState(4);
@@ -206,6 +205,7 @@ export default function ScheduleTab({
           </div>
         </div>
 
+        {adminMode && (
         <div className="grid gap-2 sm:grid-cols-3">
           <label className="rounded-2xl bg-amber-50 p-3 text-sm font-bold text-slate-700">
             <div className="mb-1 text-xs font-black uppercase text-amber-700">Giờ bắt đầu</div>
@@ -243,6 +243,7 @@ export default function ScheduleTab({
             </select>
           </label>
         </div>
+        )}
       </div>
 
       <div className="mb-4 grid gap-3 md:grid-cols-4">

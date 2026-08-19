@@ -2061,6 +2061,7 @@ export default function App() {
           <ScheduleTab
             groupStageData={allGroupStageData}
             fallbackGroupAssignments={groupAssignments}
+            adminMode={adminMode}
           />
         ) : null}
 

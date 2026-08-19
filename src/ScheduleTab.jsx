@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 
 const GROUP_CODES = ["A", "B", "C", "D", "E", "F"];
-
 const PHASES = ["1vs4", "2vs3", "1vs3", "2vs4", "1vs2", "3vs4"];
 
 const PAIR_MAP = {
@@ -21,13 +20,9 @@ function normalizePlayers(rawPlayers = []) {
 
 function getPlayersForGroup(groupStageData = {}, fallbackGroupAssignments = {}, groupCode) {
   const fallbackPlayers = normalizePlayers(fallbackGroupAssignments?.[groupCode]);
-
-  if (fallbackPlayers.length) {
-    return fallbackPlayers;
-  }
+  if (fallbackPlayers.length) return fallbackPlayers;
 
   const firebasePlayers = normalizePlayers(groupStageData?.[`group${groupCode}`]?.players);
-
   return firebasePlayers;
 }
 
@@ -49,7 +44,6 @@ function buildFlatMatches(groupStageData = {}, fallbackGroupAssignments = {}) {
     GROUP_CODES.forEach((groupCode) => {
       const players = getPlayersForGroup(groupStageData, fallbackGroupAssignments, groupCode);
       const pairInfo = PAIR_MAP[phase];
-
       const p1 = players[pairInfo.p1];
       const p2 = players[pairInfo.p2];
 
@@ -132,17 +126,14 @@ export default function ScheduleTab({
           <span>Tổng trận</span>
           <strong>{totalMatches}</strong>
         </div>
-
         <div className="schedule-summary-box">
           <span>Số bàn</span>
           <strong>4</strong>
         </div>
-
         <div className="schedule-summary-box">
           <span>Bắt đầu</span>
           <strong>08:00</strong>
         </div>
-
         <div className="schedule-summary-box">
           <span>Lượt cuối</span>
           <strong>{lastSlot?.time || "--:--"}</strong>
@@ -152,11 +143,25 @@ export default function ScheduleTab({
       {scheduleData.map((slot) => (
         <section className="schedule-time-block" key={slot.time}>
           <div className="schedule-time-title">{slot.time}</div>
-
           <div className="schedule-match-list">
             {slot.matches.map((match) => (
               <div
                 className={`schedule-match-item group-${match.group}`}
                 key={`${slot.time}-${match.group}-${match.table}-${match.pair}`}
               >
-                <div className="schedule-match
+                <div className="schedule-match-meta">
+                  <span>Bảng {match.group}</span>
+                  <span>|</span>
+                  <span>{match.table}</span>
+                  <span>|</span>
+                  <strong>{match.pair}</strong>
+                </div>
+                <div className="schedule-players">{match.players}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}

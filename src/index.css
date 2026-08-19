@@ -167,3 +167,103 @@ button, input, select {
     font-size: 22px;
   }
 }
+/* ===== Mobile Landscape Optimized ===== */
+
+.compact-schedule {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 10px;
+}
+
+.compact-table-wrap {
+  background: #eaf2fb;
+  border-radius: 24px;
+  padding: 8px;
+  overflow-x: auto;
+}
+
+.compact-table-head,
+.compact-time-row {
+  grid-template-columns: 90px repeat(4, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.compact-time-cell {
+  min-height: 72px;
+  font-size: 18px;
+}
+
+.compact-match-card {
+  min-height: 72px;
+  padding: 8px 10px;
+}
+
+.compact-match-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.compact-match-line span {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.compact-match-line strong {
+  font-size: 12px;
+}
+
+.compact-player-line {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+/* iPhone landscape */
+@media (max-width: 950px) and (orientation: landscape) {
+
+  .compact-schedule {
+    padding: 4px;
+  }
+
+  .compact-table-wrap {
+    padding: 4px;
+  }
+
+  .compact-table-head,
+  .compact-time-row {
+    grid-template-columns: 70px repeat(4, minmax(125px, 1fr));
+    gap: 4px;
+  }
+
+  .compact-table-head > div {
+    padding: 10px 4px;
+    font-size: 14px;
+  }
+
+  .compact-time-cell {
+    min-height: 60px;
+    font-size: 16px;
+  }
+
+  .compact-match-card {
+    min-height: 60px;
+    padding: 6px;
+  }
+
+  .compact-match-line span {
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+
+  .compact-match-line strong {
+    font-size: 11px;
+  }
+
+  .compact-player-line {
+    font-size: 11px;
+    line-height: 1.15;
+  }
+}

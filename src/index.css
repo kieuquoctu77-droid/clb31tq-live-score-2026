@@ -1,206 +1,90 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ===== ScheduleTab compact style - dán vào cuối index.css hoặc dùng file này thay phần CSS lịch thi đấu ===== */
 
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  min-height: 100%;
-}
-
-body {
-  margin: 0;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #0f172a;
-}
-
-button,
-input,
-select {
-  font-family: inherit;
-}
-
-/* ===== Compact Schedule Tab - custom CSS ===== */
-.compact-schedule {
-  max-width: 1480px;
-  margin: 0 auto;
+.schedule-page {
+  max-width: 1000px;
+  margin: auto;
   padding: 20px;
 }
 
 .schedule-title {
-  font-size: 34px;
-  font-weight: 900;
-  color: #b45309;
-  line-height: 1.15;
-}
-
-.schedule-subtitle {
-  margin-top: 6px;
-  color: #64748b;
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.schedule-summary-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin: 24px 0;
-}
-
-.schedule-summary-box {
-  background: #f1f5f9;
-  border-radius: 18px;
-  min-height: 82px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-
-.schedule-summary-box span {
-  color: #64748b;
-  font-weight: 900;
-  text-transform: uppercase;
-  font-size: 14px;
-}
-
-.schedule-summary-box strong {
-  margin-top: 6px;
+  text-align: center;
+  color: #d97706;
   font-size: 32px;
-  color: #0f172a;
+  font-weight: 800;
+  margin-bottom: 20px;
 }
 
-.compact-table-wrap {
-  background: #eaf2fb;
-  border-radius: 24px;
-  padding: 16px;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
-  overflow-x: auto;
-}
-
-.compact-table-head,
-.compact-time-row {
-  display: grid;
-  grid-template-columns: 130px repeat(4, minmax(220px, 1fr));
-  gap: 12px;
-  min-width: 1050px;
-}
-
-.compact-table-head {
-  margin-bottom: 12px;
-}
-
-.compact-table-head > div {
-  background: #020617;
-  color: #ffffff;
-  border-radius: 16px;
-  padding: 18px 10px;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 900;
-}
-
-.compact-table-head > div:first-child {
-  color: #facc15;
-}
-
-.compact-time-row {
-  margin-bottom: 12px;
-}
-
-.compact-time-cell {
-  background: #020617;
-  color: #facc15;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  font-weight: 900;
-  min-height: 82px;
-}
-
-.compact-match-card {
-  border-radius: 16px;
-  padding: 12px 14px;
-  min-height: 82px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  border: 2px solid #dbeafe;
+.time-block {
   background: #ffffff;
-}
-
-.compact-match-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 9px;
-}
-
-.compact-match-line span {
-  color: #ffffff;
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.compact-match-line strong {
-  color: #1e3a8a;
-  font-size: 19px;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.compact-player-line {
-  background: rgba(255, 255, 255, 0.78);
-  border-radius: 13px;
-  padding: 10px 12px;
-  color: #020617;
-  font-size: 15px;
-  font-weight: 900;
-  line-height: 1.25;
-  white-space: nowrap;
+  border-radius: 16px;
+  margin-bottom: 20px;
   overflow: hidden;
-  text-overflow: ellipsis;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
 }
 
-.group-A { background: #eff6ff; border-color: #93c5fd; }
-.group-B { background: #fff7ed; border-color: #fdba74; }
-.group-C { background: #faf5ff; border-color: #d8b4fe; }
-.group-D { background: #fff1f2; border-color: #fda4af; }
-.group-E { background: #ecfdf5; border-color: #86efac; }
-.group-F { background: #fefce8; border-color: #fde68a; }
-
-.group-A .compact-match-line span { background: #2563eb; }
-.group-B .compact-match-line span { background: #ea580c; }
-.group-C .compact-match-line span { background: #7e22ce; }
-.group-D .compact-match-line span { background: #be123c; }
-.group-E .compact-match-line span { background: #047857; }
-.group-F .compact-match-line span { background: #ca8a04; }
-
-.compact-note {
-  margin-top: 18px;
-  background: #ecfdf5;
-  border: 1px solid #86efac;
-  color: #065f46;
-  border-radius: 18px;
-  padding: 16px;
-  text-align: center;
-  font-size: 15px;
-  font-weight: 900;
+.time-header {
+  background: #0f172a;
+  color: #facc15;
+  padding: 12px 18px;
+  font-size: 24px;
+  font-weight: 800;
 }
 
-@media (max-width: 900px) {
-  .schedule-summary-row {
-    grid-template-columns: repeat(2, 1fr);
+.match-row {
+  padding: 15px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.match-row:last-child {
+  border-bottom: none;
+}
+
+.match-info {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: #1e293b;
+  font-size: 18px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.match-info strong {
+  font-weight: 800;
+}
+
+.player-line {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.35;
+}
+
+@media (max-width: 768px) {
+  .schedule-page {
+    padding: 12px;
+  }
+
+  .schedule-title {
+    font-size: 26px;
+  }
+
+  .time-header {
+    font-size: 22px;
+    padding: 10px 14px;
+  }
+
+  .match-row {
+    padding: 13px 14px;
+  }
+
+  .match-info {
+    font-size: 15px;
+    gap: 7px;
+  }
+
+  .player-line {
+    font-size: 17px;
   }
 }

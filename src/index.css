@@ -1,21 +1,194 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
-* {
-  box-sizing: border-box;
+/* ===== Compact Schedule Tab - thêm vào cuối file index.css ===== */
+.compact-schedule {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
-html, body, #root {
-  min-height: 100%;
+.schedule-title {
+  font-size: 34px;
+  font-weight: 900;
+  color: #b45309;
+  line-height: 1.15;
 }
 
-body {
-  margin: 0;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #0f172a;
+.schedule-subtitle {
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 16px;
+  font-weight: 700;
 }
 
-button, input, select {
-  font-family: inherit;
+.schedule-summary-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 24px 0;
+}
+
+.schedule-summary-box {
+  background: #f1f5f9;
+  border-radius: 18px;
+  min-height: 82px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.schedule-summary-box span {
+  color: #64748b;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 14px;
+}
+
+.schedule-summary-box strong {
+  margin-top: 6px;
+  font-size: 32px;
+  color: #0f172a;
+}
+
+.compact-table-wrap {
+  background: #eaf2fb;
+  border-radius: 24px;
+  padding: 16px;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+
+.compact-table-head,
+.compact-time-row {
+  display: grid;
+  grid-template-columns: 130px repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.compact-table-head {
+  margin-bottom: 12px;
+}
+
+.compact-table-head > div {
+  background: #020617;
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 18px 10px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.compact-table-head > div:first-child {
+  color: #facc15;
+}
+
+.compact-time-row {
+  margin-bottom: 12px;
+}
+
+.compact-time-cell {
+  background: #020617;
+  color: #facc15;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 900;
+  min-height: 94px;
+}
+
+.compact-match-card {
+  border-radius: 16px;
+  padding: 14px 16px;
+  min-height: 94px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 2px solid #dbeafe;
+  background: #ffffff;
+}
+
+.compact-match-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.compact-match-line span {
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.compact-match-line strong {
+  color: #1e3a8a;
+  font-size: 20px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.compact-player-line {
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 14px;
+  padding: 11px 12px;
+  color: #020617;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.group-A { background: #eff6ff; border-color: #93c5fd; }
+.group-B { background: #fff7ed; border-color: #fdba74; }
+.group-C { background: #faf5ff; border-color: #d8b4fe; }
+.group-D { background: #fff1f2; border-color: #fda4af; }
+.group-E { background: #ecfdf5; border-color: #86efac; }
+.group-F { background: #fefce8; border-color: #fde68a; }
+
+.group-A .compact-match-line span { background: #2563eb; }
+.group-B .compact-match-line span { background: #ea580c; }
+.group-C .compact-match-line span { background: #7e22ce; }
+.group-D .compact-match-line span { background: #be123c; }
+.group-E .compact-match-line span { background: #047857; }
+.group-F .compact-match-line span { background: #ca8a04; }
+
+.compact-note {
+  margin-top: 18px;
+  background: #ecfdf5;
+  border: 1px solid #86efac;
+  color: #065f46;
+  border-radius: 18px;
+  padding: 16px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+@media (max-width: 900px) {
+  .compact-table-head,
+  .compact-time-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .compact-table-head {
+    display: none;
+  }
+
+  .compact-time-cell {
+    grid-column: 1 / -1;
+    min-height: 58px;
+  }
+
+  .compact-match-card::before {
+    content: attr(data-table);
+  }
+
+  .schedule-summary-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

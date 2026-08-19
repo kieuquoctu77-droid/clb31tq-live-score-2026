@@ -159,7 +159,7 @@ function MatchCell({ match, table }) {
       </div>
 
       <div className="mb-2 text-xs font-black uppercase text-slate-500">
-        {match.roundLabel} • Bàn {table}
+      
       </div>
 
       <div className="rounded-xl bg-white/90 px-3 py-2 text-sm font-black leading-snug text-slate-950">

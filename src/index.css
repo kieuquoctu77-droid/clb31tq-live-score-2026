@@ -21,45 +21,72 @@ button, input, select {
 }
 @media (max-width: 900px) {
 
-  .schedule-summary-row {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-
-  .schedule-summary-box strong {
-    font-size: 24px;
-  }
-
   .compact-table-wrap {
-    padding: 10px;
-  }
-
-  .compact-table-head,
-  .compact-time-row {
-    display: block;
-    min-width: auto;
+    padding: 8px;
+    overflow: visible;
   }
 
   .compact-table-head {
     display: none;
   }
 
+  .compact-time-row {
+    display: block;
+    min-width: 100%;
+    margin-bottom: 16px;
+  }
+
   .compact-time-cell {
-    min-height: 52px;
+    width: 100%;
+    min-height: 50px;
     margin-bottom: 8px;
-    font-size: 20px;
+    font-size: 22px;
+    border-radius: 12px;
   }
 
   .compact-match-card {
+    width: 100%;
     min-height: auto;
     margin-bottom: 8px;
     padding: 10px;
   }
 
+  .compact-match-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .compact-match-line span {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+
+  .compact-match-line strong {
+    font-size: 14px;
+  }
+
   .compact-player-line {
+    font-size: 14px;
     white-space: normal;
     overflow: visible;
     text-overflow: unset;
-    font-size: 14px;
+    word-break: break-word;
   }
+
+  .schedule-summary-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .schedule-summary-box {
+    min-height: 70px;
+  }
+
+  .schedule-summary-box strong {
+    font-size: 22px;
+  }
+}
 }

@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 
 const GROUP_CODES = ["A", "B", "C", "D", "E", "F"];
-
 const PHASES = ["1vs4", "2vs3", "1vs3", "2vs4", "1vs2", "3vs4"];
 
 const PAIR_MAP = {
@@ -19,22 +18,25 @@ function normalizePlayers(rawPlayers = []) {
     : [];
 }
 
+/*
+ * Ưu tiên dữ liệu đang được tab Vòng bảng đọc từ Firebase.
+ * Nếu Firebase chưa có dữ liệu groupA...groupF thì mới dùng danh sách
+ * groupAssignments do App.jsx truyền xuống.
+ */
 function getPlayersForGroup(
   groupStageData = {},
   fallbackGroupAssignments = {},
   groupCode
 ) {
-  const fallbackPlayers = normalizePlayers(fallbackGroupAssignments?.[groupCode]);
-
-  if (fallbackPlayers.length) {
-    return fallbackPlayers;
-  }
-
   const firebasePlayers = normalizePlayers(
     groupStageData?.[`group${groupCode}`]?.players
   );
 
-  return firebasePlayers;
+  if (firebasePlayers.length) {
+    return firebasePlayers;
+  }
+
+  return normalizePlayers(fallbackGroupAssignments?.[groupCode]);
 }
 
 function timeToMinutes(value = "08:00") {
@@ -58,25 +60,17 @@ function buildFlatMatches(groupStageData = {}, fallbackGroupAssignments = {}) {
         fallbackGroupAssignments,
         groupCode
       );
-
       const pairInfo = PAIR_MAP[phase];
-
       const p1 = players[pairInfo.p1];
       const p2 = players[pairInfo.p2];
-
-      if (!p1 || !p2) {
-        matches.push({
-          group: groupCode,
-          pair: pairInfo.pair,
-          players: `VĐV ${pairInfo.p1 + 1} VS VĐV ${pairInfo.p2 + 1}`,
-        });
-        return;
-      }
 
       matches.push({
         group: groupCode,
         pair: pairInfo.pair,
-        players: `${p1} VS ${p2}`,
+        players:
+          p1 && p2
+            ? `${p1} VS ${p2}`
+            : `VĐV ${pairInfo.p1 + 1} VS VĐV ${pairInfo.p2 + 1}`,
       });
     });
   });
@@ -91,7 +85,10 @@ function buildScheduleData({
   matchDuration = 20,
   tableCount = 4,
 }) {
-  const flatMatches = buildFlatMatches(groupStageData, fallbackGroupAssignments);
+  const flatMatches = buildFlatMatches(
+    groupStageData,
+    fallbackGroupAssignments
+  );
   const startMinutes = timeToMinutes(startTime);
 
   return flatMatches.reduce((slots, match, index) => {
@@ -100,10 +97,7 @@ function buildScheduleData({
     const time = minutesToTime(startMinutes + slotIndex * matchDuration);
 
     if (!slots[slotIndex]) {
-      slots[slotIndex] = {
-        time,
-        matches: [],
-      };
+      slots[slotIndex] = { time, matches: [] };
     }
 
     slots[slotIndex].matches.push({
@@ -113,6 +107,70 @@ function buildScheduleData({
 
     return slots;
   }, []);
+}
+
+function GroupOverview({ groupStageData, fallbackGroupAssignments }) {
+  const groups = useMemo(
+    () =>
+      GROUP_CODES.map((groupCode) => ({
+        code: groupCode,
+        players: getPlayersForGroup(
+          groupStageData,
+          fallbackGroupAssignments,
+          groupCode
+        ),
+      })),
+    [groupStageData, fallbackGroupAssignments]
+  );
+
+  return (
+    <section className="mb-5">
+      <div className="mb-3 text-center text-lg font-black uppercase tracking-wide text-white sm:text-xl">
+        🏓 Danh sách bảng đấu sau bốc thăm
+      </div>
+
+      {/*
+        Mobile dọc: 2 cột
+        Tablet: 3 cột
+        Desktop lớn: 6 cột trên cùng một hàng
+      */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6">
+        {groups.map(({ code, players }) => (
+          <article
+            key={code}
+            className="min-w-0 overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-slate-200 sm:rounded-2xl"
+          >
+            <div className="bg-gradient-to-r from-amber-500 to-orange-600 px-2 py-2 text-center text-sm font-black text-white sm:text-base">
+              BẢNG {code}
+            </div>
+
+            <div className="space-y-1 p-2 sm:p-3">
+              {Array.from({ length: 4 }, (_, index) => {
+                const player = players[index];
+
+                return (
+                  <div
+                    key={`${code}-${index}`}
+                    className="flex min-w-0 items-center gap-1.5 rounded-lg bg-slate-50 px-1.5 py-1.5 sm:gap-2 sm:px-2"
+                  >
+                    <span className="flex h-6 w-7 shrink-0 items-center justify-center rounded-md bg-red-100 text-[10px] font-black text-red-700 sm:h-7 sm:w-8 sm:text-xs">
+                      {code}{index + 1}
+                    </span>
+                    <span
+                      className="min-w-0 flex-1 break-words text-[11px] font-extrabold leading-tight text-slate-900 sm:text-xs xl:text-[11px] 2xl:text-xs"
+                      title={player || "Chưa cập nhật"}
+                    >
+                      {player || "Chưa cập nhật"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 export default function ScheduleTab({
@@ -131,38 +189,14 @@ export default function ScheduleTab({
     [groupStageData, fallbackGroupAssignments]
   );
 
-  const totalMatches = scheduleData.reduce(
-    (total, slot) => total + slot.matches.length,
-    0
-  );
-
-  const lastSlot = scheduleData[scheduleData.length - 1];
-
   return (
     <div className="schedule-page schedule-clean">
       <h2 className="schedule-clean-title">📅 LỊCH THI ĐẤU</h2>
 
-      <div className="schedule-summary-row">
-        <div className="schedule-summary-box">
-          <span>Tổng trận</span>
-          <strong>{totalMatches}</strong>
-        </div>
-
-        <div className="schedule-summary-box">
-          <span>Số bàn</span>
-          <strong>4</strong>
-        </div>
-
-        <div className="schedule-summary-box">
-          <span>Bắt đầu</span>
-          <strong>08:00</strong>
-        </div>
-
-        <div className="schedule-summary-box">
-          <span>Lượt cuối</span>
-          <strong>{lastSlot?.time || "--:--"}</strong>
-        </div>
-      </div>
+      <GroupOverview
+        groupStageData={groupStageData}
+        fallbackGroupAssignments={fallbackGroupAssignments}
+      />
 
       {scheduleData.map((slot) => (
         <section className="schedule-time-block" key={slot.time}>
@@ -181,7 +215,6 @@ export default function ScheduleTab({
                   <span>|</span>
                   <strong>{match.pair}</strong>
                 </div>
-
                 <div className="schedule-players">{match.players}</div>
               </div>
             ))}

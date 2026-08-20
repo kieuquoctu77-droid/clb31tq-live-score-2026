@@ -24,11 +24,17 @@ function getPlayersForGroup(
   fallbackGroupAssignments = {},
   groupCode
 ) {
+  const fallbackPlayers = normalizePlayers(fallbackGroupAssignments?.[groupCode]);
+
+  if (fallbackPlayers.length) {
+    return fallbackPlayers;
+  }
+
   const firebasePlayers = normalizePlayers(
     groupStageData?.[`group${groupCode}`]?.players
   );
-  if (firebasePlayers.length) return firebasePlayers;
-  return normalizePlayers(fallbackGroupAssignments?.[groupCode]);
+
+  return firebasePlayers;
 }
 
 function timeToMinutes(value = "08:00") {
@@ -118,11 +124,28 @@ function GroupOverview({ groupStageData, fallbackGroupAssignments }) {
     [groupStageData, fallbackGroupAssignments]
   );
 
+  const matchOrder = ["1 vs 4", "2 vs 3", "1 vs 3", "2 vs 4", "1 vs 2", "3 vs 4"];
+
   return (
     <section className="mb-5">
-      <div className="mb-3 text-center text-sm font-black uppercase leading-relaxed text-yellow-300 sm:text-base md:text-lg">
-        THỨ TỰ THI ĐẤU: <span className="text-white">1vs4 → 2vs3 → 1vs3 → 2vs4 → 1vs2 → 3vs4</span>
+      <div className="mb-4 rounded-2xl border border-white/20 bg-white/10 px-3 py-3 shadow-lg backdrop-blur-sm sm:px-4">
+        <div className="mb-2 text-center text-xs font-black uppercase tracking-wider text-yellow-300 sm:text-sm">
+          THỨ TỰ THI ĐẤU
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-2 sm:gap-x-2">
+          {matchOrder.map((pair, index) => (
+            <React.Fragment key={pair}>
+              <span className="rounded-lg border border-white/20 bg-white/15 px-2.5 py-1.5 text-xs font-black text-white shadow-sm sm:px-3 sm:text-sm">
+                {pair}
+              </span>
+              {index < matchOrder.length - 1 && (
+                <span className="font-black text-yellow-300">→</span>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
+
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6">
         {groups.map(({ code, players }) => (
           <article key={code} className="min-w-0 overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-slate-200 sm:rounded-2xl">
@@ -169,8 +192,6 @@ export default function ScheduleTab({
 
   return (
     <div className="schedule-page schedule-clean">
-      <h2 className="schedule-clean-title">📅 LỊCH THI ĐẤU</h2>
-
       <GroupOverview
         groupStageData={groupStageData}
         fallbackGroupAssignments={fallbackGroupAssignments}

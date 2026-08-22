@@ -533,33 +533,33 @@ function getSlotMeta(bracketSize = 16) {
   if (Number(bracketSize) === 8) {
     return [
       { roundKey: 'quarter', matchId: 'tk1', playerKey: 'p1', allowedRanks: [3], matchNo: 1, quarterNo: 1, halfNo: 1 },
-      { roundKey: 'quarter', matchId: 'tk1', playerKey: 'p2', allowedRanks: [4], matchNo: 1, quarterNo: 1, halfNo: 1, fixedGroup: 'A' },
+      { roundKey: 'quarter', matchId: 'tk1', playerKey: 'p2', allowedRanks: [4], matchNo: 1, quarterNo: 1, halfNo: 1 },
       { roundKey: 'quarter', matchId: 'tk2', playerKey: 'p1', allowedRanks: [3], matchNo: 2, quarterNo: 2, halfNo: 1 },
-      { roundKey: 'quarter', matchId: 'tk2', playerKey: 'p2', allowedRanks: [4], matchNo: 2, quarterNo: 2, halfNo: 1, fixedGroup: 'B' },
-      { roundKey: 'quarter', matchId: 'tk3', playerKey: 'p1', allowedRanks: [4], matchNo: 3, quarterNo: 3, halfNo: 2, fixedGroup: 'C' },
-      { roundKey: 'quarter', matchId: 'tk3', playerKey: 'p2', allowedRanks: [4], matchNo: 3, quarterNo: 3, halfNo: 2, fixedGroup: 'D' },
-      { roundKey: 'quarter', matchId: 'tk4', playerKey: 'p1', allowedRanks: [4], matchNo: 4, quarterNo: 4, halfNo: 2, fixedGroup: 'E' },
-      { roundKey: 'quarter', matchId: 'tk4', playerKey: 'p2', allowedRanks: [4], matchNo: 4, quarterNo: 4, halfNo: 2, fixedGroup: 'F' },
+      { roundKey: 'quarter', matchId: 'tk2', playerKey: 'p2', allowedRanks: [4], matchNo: 2, quarterNo: 2, halfNo: 1 },
+      { roundKey: 'quarter', matchId: 'tk3', playerKey: 'p1', allowedRanks: [4], matchNo: 3, quarterNo: 3, halfNo: 2 },
+      { roundKey: 'quarter', matchId: 'tk3', playerKey: 'p2', allowedRanks: [4], matchNo: 3, quarterNo: 3, halfNo: 2 },
+      { roundKey: 'quarter', matchId: 'tk4', playerKey: 'p1', allowedRanks: [4], matchNo: 4, quarterNo: 4, halfNo: 2 },
+      { roundKey: 'quarter', matchId: 'tk4', playerKey: 'p2', allowedRanks: [4], matchNo: 4, quarterNo: 4, halfNo: 2 },
     ];
   }
 
   return [
     { roundKey: 'round16', matchId: 't1', playerKey: 'p1', allowedRanks: [1], matchNo: 1, quarterNo: 1, halfNo: 1 },
     { roundKey: 'round16', matchId: 't1', playerKey: 'p2', allowedRanks: [3], matchNo: 1, quarterNo: 1, halfNo: 1 },
-    { roundKey: 'round16', matchId: 't2', playerKey: 'p1', allowedRanks: [2], matchNo: 2, quarterNo: 1, halfNo: 1, fixedGroup: 'A' },
-    { roundKey: 'round16', matchId: 't2', playerKey: 'p2', allowedRanks: [2], matchNo: 2, quarterNo: 1, halfNo: 1, fixedGroup: 'D' },
+    { roundKey: 'round16', matchId: 't2', playerKey: 'p1', allowedRanks: [2], matchNo: 2, quarterNo: 1, halfNo: 1 },
+    { roundKey: 'round16', matchId: 't2', playerKey: 'p2', allowedRanks: [2], matchNo: 2, quarterNo: 1, halfNo: 1 },
     { roundKey: 'round16', matchId: 't3', playerKey: 'p1', allowedRanks: [1], matchNo: 3, quarterNo: 2, halfNo: 1 },
     { roundKey: 'round16', matchId: 't3', playerKey: 'p2', allowedRanks: [3], matchNo: 3, quarterNo: 2, halfNo: 1 },
-    { roundKey: 'round16', matchId: 't4', playerKey: 'p1', allowedRanks: [2], matchNo: 4, quarterNo: 2, halfNo: 1, fixedGroup: 'B' },
-    { roundKey: 'round16', matchId: 't4', playerKey: 'p2', allowedRanks: [2], matchNo: 4, quarterNo: 2, halfNo: 1, fixedGroup: 'C' },
+    { roundKey: 'round16', matchId: 't4', playerKey: 'p1', allowedRanks: [2], matchNo: 4, quarterNo: 2, halfNo: 1 },
+    { roundKey: 'round16', matchId: 't4', playerKey: 'p2', allowedRanks: [2], matchNo: 4, quarterNo: 2, halfNo: 1 },
     { roundKey: 'round16', matchId: 't5', playerKey: 'p1', allowedRanks: [1], matchNo: 5, quarterNo: 3, halfNo: 2 },
     { roundKey: 'round16', matchId: 't5', playerKey: 'p2', allowedRanks: [3], matchNo: 5, quarterNo: 3, halfNo: 2 },
     { roundKey: 'round16', matchId: 't6', playerKey: 'p1', allowedRanks: [1], matchNo: 6, quarterNo: 3, halfNo: 2 },
-    { roundKey: 'round16', matchId: 't6', playerKey: 'p2', allowedRanks: [2], matchNo: 6, quarterNo: 3, halfNo: 2, fixedGroup: 'E' },
+    { roundKey: 'round16', matchId: 't6', playerKey: 'p2', allowedRanks: [2], matchNo: 6, quarterNo: 3, halfNo: 2 },
     { roundKey: 'round16', matchId: 't7', playerKey: 'p1', allowedRanks: [1], matchNo: 7, quarterNo: 4, halfNo: 2 },
     { roundKey: 'round16', matchId: 't7', playerKey: 'p2', allowedRanks: [3], matchNo: 7, quarterNo: 4, halfNo: 2 },
     { roundKey: 'round16', matchId: 't8', playerKey: 'p1', allowedRanks: [1], matchNo: 8, quarterNo: 4, halfNo: 2 },
-    { roundKey: 'round16', matchId: 't8', playerKey: 'p2', allowedRanks: [2], matchNo: 8, quarterNo: 4, halfNo: 2, fixedGroup: 'F' },
+    { roundKey: 'round16', matchId: 't8', playerKey: 'p2', allowedRanks: [2], matchNo: 8, quarterNo: 4, halfNo: 2 },
   ];
 }
 
@@ -644,7 +644,6 @@ function getCandidateEntries(slot, pool, usedNames) {
   return pool.filter(entry => {
     if (!entry?.name || usedNames.has(entry.name)) return false;
     if (!slot.allowedRanks.includes(entry.rank)) return false;
-    if (slot.fixedGroup && entry.groupCode !== slot.fixedGroup) return false;
     return true;
   });
 }
@@ -663,7 +662,6 @@ function scoreCandidate(slot, candidate, placed) {
   if (sameGroupPlaced.length && sameGroupPlaced.every(item => item.slot.halfNo !== slot.halfNo)) {
     score += 5000;
   }
-  if (slot.fixedGroup && slot.fixedGroup === candidate.groupCode) score += 100;
   return score;
 }
 

@@ -500,99 +500,153 @@ function autoAssignThirdPlaces(data, groupMap) {
 function autoCompleteSerieABracket(data, groupMap) {
   const next = prepareKnockoutData(cloneData(data), 16);
   const entries = getQualifiedEntries(groupMap);
-  const firstSlots = getSlotMeta(16).filter(slot => slot.allowedRanks.includes(1));
-  const remainingSlots = getSlotMeta(16).filter(slot => !slot.allowedRanks.includes(1));
+  const slotMeta = getSlotMeta(16);
 
-  const fixedFirsts = firstSlots.map(slot => {
-    const name = next[slot.roundKey]?.[slot.matchId]?.[slot.playerKey] || '';
+  const nSlots = [
+    ['t1', 'p1'],
+    ['t3', 'p1'],
+    ['t5', 'p1'],
+    ['t6', 'p1'],
+    ['t7', 'p1'],
+    ['t8', 'p1'],
+  ];
+
+  const selectedFirsts = nSlots.map(([matchId, playerKey]) => {
+    const name = next.round16?.[matchId]?.[playerKey] || '';
     return {
-      slot,
-      entry: name && !isPlaceholder(name)
-        ? { name, groupCode: getPlayerGroup(name, groupMap), rank: 1 }
-        : null,
+      name,
+      groupCode: getPlayerGroup(name, groupMap),
+      slot: slotMeta.find(slot => slot.matchId === matchId && slot.playerKey === playerKey),
     };
   });
 
-  if (fixedFirsts.some(item => !item.entry?.name || !item.entry?.groupCode)) {
-    return { ok: false, data: next, message: 'Anh cần bốc đủ N1-N6 trước khi bấm Tự Hoàn Thiện Nhánh.' };
+  if (
+    selectedFirsts.some(item => !item.name || isPlaceholder(item.name) || !item.groupCode) ||
+    new Set(selectedFirsts.map(item => item.name)).size !== 6
+  ) {
+    return {
+      ok: false,
+      data: next,
+      message: 'Anh cần bốc đủ 6 Nhất bảng vào N1-N6 trước khi bấm Tự Hoàn Thiện Nhánh.',
+    };
   }
 
-  const pool = [...entries.seconds, ...entries.topThirds];
-  if (entries.seconds.length !== 6 || entries.topThirds.length !== 4) {
-    return { ok: false, data: next, message: 'Chưa đủ 6 Nhì bảng và 4 Hạng 3 xuất sắc để hoàn thiện nhánh.' };
+  const secondByGroup = Object.fromEntries(
+    entries.seconds.map(entry => [entry.groupCode, entry])
+  );
+
+  if (GROUP_CODES.some(code => !secondByGroup[code]?.name)) {
+    return {
+      ok: false,
+      data: next,
+      message: 'Chưa đủ Nhì bảng A-F để hoàn thiện nhánh.',
+    };
   }
 
-  const placed = [...fixedFirsts];
-  const used = new Set(fixedFirsts.map(item => item.entry.name));
+  if (entries.topThirds.length !== 4) {
+    return {
+      ok: false,
+      data: next,
+      message: 'Chưa đủ 4 VĐV Hạng 3 xuất sắc để hoàn thiện nhánh.',
+    };
+  }
+
+  // Giữ đúng sơ đồ điều lệ.
+  const fixedSecondSlots = [
+    { matchId: 't2', playerKey: 'p1', entry: secondByGroup.A },
+    { matchId: 't2', playerKey: 'p2', entry: secondByGroup.D },
+    { matchId: 't4', playerKey: 'p1', entry: secondByGroup.B },
+    { matchId: 't4', playerKey: 'p2', entry: secondByGroup.C },
+    { matchId: 't6', playerKey: 'p2', entry: secondByGroup.E },
+    { matchId: 't8', playerKey: 'p2', entry: secondByGroup.F },
+  ];
+
+  fixedSecondSlots.forEach(({ matchId, playerKey, entry }) => {
+    next.round16[matchId][playerKey] = entry.name;
+  });
+
+  const h3Slots = getH3AutoSlots();
+  const fixedPlaced = [
+    ...selectedFirsts.map(item => ({
+      entry: { name: item.name, groupCode: item.groupCode },
+      slot: item.slot,
+    })),
+    ...fixedSecondSlots.map(({ matchId, playerKey, entry }) => ({
+      entry,
+      slot: slotMeta.find(slot => slot.matchId === matchId && slot.playerKey === playerKey),
+    })),
+  ];
+
+  const used = new Set();
+  const placedH3 = [];
   let best = { placed: [], score: -Infinity };
 
-  const isHardValid = (slot, entry, current) => current.every(item => {
-    if (!item.entry || item.entry.groupCode !== entry.groupCode) return true;
-    if (item.slot.matchNo === slot.matchNo) return false;
-    if (item.slot.quarterNo === slot.quarterNo) return false;
-    return true;
-  });
+  const isValidH3Placement = (slot, entry) =>
+    [...fixedPlaced, ...placedH3].every(item => {
+      if (!item.entry || item.entry.groupCode !== entry.groupCode) return true;
+      if (item.slot.matchNo === slot.matchNo) return false;
+      if (item.slot.quarterNo === slot.quarterNo) return false;
+      return true;
+    });
 
-  const placementScore = (slot, entry, current) => current.reduce((score, item) => {
-    if (!item.entry || item.entry.groupCode !== entry.groupCode) return score;
-    return score + (item.slot.halfNo === slot.halfNo ? -10000 : 50000);
-  }, 0);
-
-  const orderedSlots = [...remainingSlots].sort((a, b) => {
-    const ar = a.allowedRanks[0];
-    const br = b.allowedRanks[0];
-    return ar - br || a.matchNo - b.matchNo;
-  });
+  const scoreH3Placement = (slot, entry) =>
+    [...fixedPlaced, ...placedH3].reduce((score, item) => {
+      if (!item.entry || item.entry.groupCode !== entry.groupCode) return score;
+      return score + (item.slot.halfNo === slot.halfNo ? -1000 : 5000);
+    }, 0);
 
   const search = index => {
-    if (index >= orderedSlots.length) {
-      const score = placed.reduce((total, item, idx) =>
-        total + placementScore(item.slot, item.entry, placed.slice(0, idx)), 0);
-      if (score > best.score) best = { placed: placed.map(item => ({ ...item })), score };
+    if (index >= h3Slots.length) {
+      const score = placedH3.reduce(
+        (total, item) => total + scoreH3Placement(item.slot, item.entry),
+        0
+      );
+      if (score > best.score) {
+        best = { placed: placedH3.map(item => ({ ...item })), score };
+      }
       return;
     }
 
-    const slot = orderedSlots[index];
-    const rank = slot.allowedRanks[0];
-    const candidates = pool
-      .filter(entry => entry.rank === rank && !used.has(entry.name))
-      .filter(entry => isHardValid(slot, entry, placed))
-      .map(entry => ({ entry, score: placementScore(slot, entry, placed) }))
+    const slot = h3Slots[index];
+    const candidates = entries.topThirds
+      .filter(entry => !used.has(entry.name))
+      .filter(entry => isValidH3Placement(slot, entry))
+      .map(entry => ({ entry, score: scoreH3Placement(slot, entry) }))
       .sort((a, b) => b.score - a.score || a.entry.name.localeCompare(b.entry.name, 'vi'));
 
     candidates.forEach(({ entry }) => {
       used.add(entry.name);
-      placed.push({ slot, entry });
+      placedH3.push({ slot, entry });
       search(index + 1);
-      placed.pop();
+      placedH3.pop();
       used.delete(entry.name);
     });
   };
 
   search(0);
-  const autoPlaced = best.placed.filter(item => !firstSlots.some(slot =>
-    slot.matchId === item.slot.matchId && slot.playerKey === item.slot.playerKey));
 
-  if (autoPlaced.length !== remainingSlots.length) {
+  if (best.placed.length !== 4) {
     return {
       ok: false,
       data: next,
-      message: 'Không tìm được phương án hợp lệ với kết quả bốc N1-N6 hiện tại. Không có dữ liệu nào được ghi.',
+      message: 'Không tìm được cách xếp 4 Hạng 3 vừa đúng điều lệ vừa tránh tái đấu ở vòng 1/8 và Tứ kết với kết quả N1-N6 hiện tại.',
     };
   }
 
-  remainingSlots.forEach(slot => {
-    const item = autoPlaced.find(x => x.slot.matchId === slot.matchId && x.slot.playerKey === slot.playerKey);
-    next[slot.roundKey][slot.matchId][slot.playerKey] = item?.entry?.name || '';
-    next[slot.roundKey][slot.matchId].winner = '';
-    next[slot.roundKey][slot.matchId].score1 = '';
-    next[slot.roundKey][slot.matchId].score2 = '';
+  best.placed.forEach(({ slot, entry }) => {
+    next.round16[slot.matchId][slot.playerKey] = entry.name;
+  });
+
+  Object.values(next.round16).forEach(match => {
+    match.winner = '';
+    match.score1 = '';
+    match.score2 = '';
   });
 
   return {
     ok: true,
     data: next,
-    message: 'Đã tự hoàn thiện nhánh: giữ nguyên N1-N6, tự xếp H2 và H3, không tái đấu ở vòng 1/8 hoặc Tứ kết, ưu tiên tách khác nửa nhánh.',
+    message: 'Đã hoàn thiện đúng điều lệ: T2 Nhì A-Nhì D, T4 Nhì B-Nhì C, T6 N còn lại 1-Nhì E, T8 N còn lại 2-Nhì F; 4 Hạng 3 được tự xếp và không tái đấu trước Bán kết.',
   };
 }
 
@@ -1171,7 +1225,7 @@ export default function Knockout({
             🏓 SƠ ĐỒ KNOCK OUT {title} - {normalizedBracketSize} VĐV
           </div>
           <div className="mt-1 text-sm font-bold text-slate-500">
-            BTC bốc thăm N1-N6. Hệ thống tự xếp H2 và 4 VĐV Hạng 3 xuất sắc để hạn chế tái đấu sớm.
+            BTC bốc N1-N6. Hệ thống giữ đúng vị trí Nhì bảng theo điều lệ và tự xếp 4 VĐV Hạng 3 xuất sắc.
           </div>
           <div className="mt-1 text-xs font-bold text-slate-400">
             Trạng thái: {connected ? 'Realtime Firebase' : 'Local'}
@@ -1179,14 +1233,6 @@ export default function Knockout({
         </div>
         {adminMode && (
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={syncFixedSeedsNow}
-              className="flex items-center justify-center gap-2 rounded-xl border border-blue-300 bg-blue-50 px-4 py-3 font-black text-blue-700 hover:bg-blue-100"
-            >
-              <RefreshCcw size={17} />
-              Cập nhật VĐV từ vòng bảng
-            </button>
             {normalizedBracketSize === 16 && (
               <button
                 type="button"
@@ -1243,7 +1289,7 @@ export default function Knockout({
       <div className="mt-5 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
         {normalizedBracketSize === 8
           ? 'Ghi chú Serie B: hạng tư bảng A-F tự cập nhật từ vòng bảng. Hai vị trí H3 còn lại chọn bằng dropdown.'
-          : 'Ghi chú Serie A: BTC chỉ bốc N1-N6. Sau đó bấm Tự Hoàn Thiện Nhánh để app tự xếp H2A-H2F và 4 Hạng 3 xuất sắc, tránh tái đấu ở vòng 1/8 và Tứ kết, đồng thời ưu tiên tách sang hai nửa nhánh.'}
+          : 'Ghi chú Serie A: BTC bốc N1-N6. App giữ đúng điều lệ: T2 Nhì A-Nhì D, T4 Nhì B-Nhì C, T6 N còn lại 1-Nhì E, T8 N còn lại 2-Nhì F; 4 Hạng 3 được tự xếp để tránh tái đấu trước Bán kết.'}
       </div>
     </div>
   );
@@ -1514,6 +1560,7 @@ function VerticalMatchCard({
     const currentPlayer = match[playerKey];
     return uniq((playerOptionsBySlot[slotKey] || playerOptions).filter(player => player === currentPlayer || !selectedDrawPlayers.includes(player)));
   };
+  const isAutoManagedH3Slot = roundKey === 'round16' && ['t1', 't3', 't5', 't7'].includes(matchId);
 
   return (
     <div
@@ -1559,7 +1606,7 @@ function VerticalMatchCard({
           value={match.p2}
           selected={match.winner === match.p2}
           onChange={value => onUpdatePlayer(roundKey, matchId, 'p2', value)}
-          adminMode={adminMode}
+          adminMode={adminMode && !isAutoManagedH3Slot}
           placeholder="VĐV 2"
           compact={size === 'small'}
           options={getSlotOptions('p2')}

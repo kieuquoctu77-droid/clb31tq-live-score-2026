@@ -409,7 +409,7 @@ function autoAssignThirdPlaces(data, groupMap) {
     return {
       ok: false,
       data: next,
-      message: 'Anh cần chọn đủ 4 VĐV H3A-H3D trước khi bấm Tự Ghép H3.',
+      message: 'Anh cần chọn đủ 4 VĐV H3A-H3D trước khi bấm Tự Hoàn Thiện Nhánh.',
     };
   }
 
@@ -497,6 +497,105 @@ function autoAssignThirdPlaces(data, groupMap) {
   };
 }
 
+function autoCompleteSerieABracket(data, groupMap) {
+  const next = prepareKnockoutData(cloneData(data), 16);
+  const entries = getQualifiedEntries(groupMap);
+  const firstSlots = getSlotMeta(16).filter(slot => slot.allowedRanks.includes(1));
+  const remainingSlots = getSlotMeta(16).filter(slot => !slot.allowedRanks.includes(1));
+
+  const fixedFirsts = firstSlots.map(slot => {
+    const name = next[slot.roundKey]?.[slot.matchId]?.[slot.playerKey] || '';
+    return {
+      slot,
+      entry: name && !isPlaceholder(name)
+        ? { name, groupCode: getPlayerGroup(name, groupMap), rank: 1 }
+        : null,
+    };
+  });
+
+  if (fixedFirsts.some(item => !item.entry?.name || !item.entry?.groupCode)) {
+    return { ok: false, data: next, message: 'Anh cần bốc đủ N1-N6 trước khi bấm Tự Hoàn Thiện Nhánh.' };
+  }
+
+  const pool = [...entries.seconds, ...entries.topThirds];
+  if (entries.seconds.length !== 6 || entries.topThirds.length !== 4) {
+    return { ok: false, data: next, message: 'Chưa đủ 6 Nhì bảng và 4 Hạng 3 xuất sắc để hoàn thiện nhánh.' };
+  }
+
+  const placed = [...fixedFirsts];
+  const used = new Set(fixedFirsts.map(item => item.entry.name));
+  let best = { placed: [], score: -Infinity };
+
+  const isHardValid = (slot, entry, current) => current.every(item => {
+    if (!item.entry || item.entry.groupCode !== entry.groupCode) return true;
+    if (item.slot.matchNo === slot.matchNo) return false;
+    if (item.slot.quarterNo === slot.quarterNo) return false;
+    return true;
+  });
+
+  const placementScore = (slot, entry, current) => current.reduce((score, item) => {
+    if (!item.entry || item.entry.groupCode !== entry.groupCode) return score;
+    return score + (item.slot.halfNo === slot.halfNo ? -10000 : 50000);
+  }, 0);
+
+  const orderedSlots = [...remainingSlots].sort((a, b) => {
+    const ar = a.allowedRanks[0];
+    const br = b.allowedRanks[0];
+    return ar - br || a.matchNo - b.matchNo;
+  });
+
+  const search = index => {
+    if (index >= orderedSlots.length) {
+      const score = placed.reduce((total, item, idx) =>
+        total + placementScore(item.slot, item.entry, placed.slice(0, idx)), 0);
+      if (score > best.score) best = { placed: placed.map(item => ({ ...item })), score };
+      return;
+    }
+
+    const slot = orderedSlots[index];
+    const rank = slot.allowedRanks[0];
+    const candidates = pool
+      .filter(entry => entry.rank === rank && !used.has(entry.name))
+      .filter(entry => isHardValid(slot, entry, placed))
+      .map(entry => ({ entry, score: placementScore(slot, entry, placed) }))
+      .sort((a, b) => b.score - a.score || a.entry.name.localeCompare(b.entry.name, 'vi'));
+
+    candidates.forEach(({ entry }) => {
+      used.add(entry.name);
+      placed.push({ slot, entry });
+      search(index + 1);
+      placed.pop();
+      used.delete(entry.name);
+    });
+  };
+
+  search(0);
+  const autoPlaced = best.placed.filter(item => !firstSlots.some(slot =>
+    slot.matchId === item.slot.matchId && slot.playerKey === item.slot.playerKey));
+
+  if (autoPlaced.length !== remainingSlots.length) {
+    return {
+      ok: false,
+      data: next,
+      message: 'Không tìm được phương án hợp lệ với kết quả bốc N1-N6 hiện tại. Không có dữ liệu nào được ghi.',
+    };
+  }
+
+  remainingSlots.forEach(slot => {
+    const item = autoPlaced.find(x => x.slot.matchId === slot.matchId && x.slot.playerKey === slot.playerKey);
+    next[slot.roundKey][slot.matchId][slot.playerKey] = item?.entry?.name || '';
+    next[slot.roundKey][slot.matchId].winner = '';
+    next[slot.roundKey][slot.matchId].score1 = '';
+    next[slot.roundKey][slot.matchId].score2 = '';
+  });
+
+  return {
+    ok: true,
+    data: next,
+    message: 'Đã tự hoàn thiện nhánh: giữ nguyên N1-N6, tự xếp H2 và H3, không tái đấu ở vòng 1/8 hoặc Tứ kết, ưu tiên tách khác nửa nhánh.',
+  };
+}
+
 function getQualifiedEntries(groupMap) {
   const firsts = [];
   const seconds = [];
@@ -533,33 +632,33 @@ function getSlotMeta(bracketSize = 16) {
   if (Number(bracketSize) === 8) {
     return [
       { roundKey: 'quarter', matchId: 'tk1', playerKey: 'p1', allowedRanks: [3], matchNo: 1, quarterNo: 1, halfNo: 1 },
-      { roundKey: 'quarter', matchId: 'tk1', playerKey: 'p2', allowedRanks: [4], matchNo: 1, quarterNo: 1, halfNo: 1 },
+      { roundKey: 'quarter', matchId: 'tk1', playerKey: 'p2', allowedRanks: [4], matchNo: 1, quarterNo: 1, halfNo: 1, fixedGroup: 'A' },
       { roundKey: 'quarter', matchId: 'tk2', playerKey: 'p1', allowedRanks: [3], matchNo: 2, quarterNo: 2, halfNo: 1 },
-      { roundKey: 'quarter', matchId: 'tk2', playerKey: 'p2', allowedRanks: [4], matchNo: 2, quarterNo: 2, halfNo: 1 },
-      { roundKey: 'quarter', matchId: 'tk3', playerKey: 'p1', allowedRanks: [4], matchNo: 3, quarterNo: 3, halfNo: 2 },
-      { roundKey: 'quarter', matchId: 'tk3', playerKey: 'p2', allowedRanks: [4], matchNo: 3, quarterNo: 3, halfNo: 2 },
-      { roundKey: 'quarter', matchId: 'tk4', playerKey: 'p1', allowedRanks: [4], matchNo: 4, quarterNo: 4, halfNo: 2 },
-      { roundKey: 'quarter', matchId: 'tk4', playerKey: 'p2', allowedRanks: [4], matchNo: 4, quarterNo: 4, halfNo: 2 },
+      { roundKey: 'quarter', matchId: 'tk2', playerKey: 'p2', allowedRanks: [4], matchNo: 2, quarterNo: 2, halfNo: 1, fixedGroup: 'B' },
+      { roundKey: 'quarter', matchId: 'tk3', playerKey: 'p1', allowedRanks: [4], matchNo: 3, quarterNo: 3, halfNo: 2, fixedGroup: 'C' },
+      { roundKey: 'quarter', matchId: 'tk3', playerKey: 'p2', allowedRanks: [4], matchNo: 3, quarterNo: 3, halfNo: 2, fixedGroup: 'D' },
+      { roundKey: 'quarter', matchId: 'tk4', playerKey: 'p1', allowedRanks: [4], matchNo: 4, quarterNo: 4, halfNo: 2, fixedGroup: 'E' },
+      { roundKey: 'quarter', matchId: 'tk4', playerKey: 'p2', allowedRanks: [4], matchNo: 4, quarterNo: 4, halfNo: 2, fixedGroup: 'F' },
     ];
   }
 
   return [
     { roundKey: 'round16', matchId: 't1', playerKey: 'p1', allowedRanks: [1], matchNo: 1, quarterNo: 1, halfNo: 1 },
     { roundKey: 'round16', matchId: 't1', playerKey: 'p2', allowedRanks: [3], matchNo: 1, quarterNo: 1, halfNo: 1 },
-    { roundKey: 'round16', matchId: 't2', playerKey: 'p1', allowedRanks: [2], matchNo: 2, quarterNo: 1, halfNo: 1 },
-    { roundKey: 'round16', matchId: 't2', playerKey: 'p2', allowedRanks: [2], matchNo: 2, quarterNo: 1, halfNo: 1 },
+    { roundKey: 'round16', matchId: 't2', playerKey: 'p1', allowedRanks: [2], matchNo: 2, quarterNo: 1, halfNo: 1, fixedGroup: 'A' },
+    { roundKey: 'round16', matchId: 't2', playerKey: 'p2', allowedRanks: [2], matchNo: 2, quarterNo: 1, halfNo: 1, fixedGroup: 'D' },
     { roundKey: 'round16', matchId: 't3', playerKey: 'p1', allowedRanks: [1], matchNo: 3, quarterNo: 2, halfNo: 1 },
     { roundKey: 'round16', matchId: 't3', playerKey: 'p2', allowedRanks: [3], matchNo: 3, quarterNo: 2, halfNo: 1 },
-    { roundKey: 'round16', matchId: 't4', playerKey: 'p1', allowedRanks: [2], matchNo: 4, quarterNo: 2, halfNo: 1 },
-    { roundKey: 'round16', matchId: 't4', playerKey: 'p2', allowedRanks: [2], matchNo: 4, quarterNo: 2, halfNo: 1 },
+    { roundKey: 'round16', matchId: 't4', playerKey: 'p1', allowedRanks: [2], matchNo: 4, quarterNo: 2, halfNo: 1, fixedGroup: 'B' },
+    { roundKey: 'round16', matchId: 't4', playerKey: 'p2', allowedRanks: [2], matchNo: 4, quarterNo: 2, halfNo: 1, fixedGroup: 'C' },
     { roundKey: 'round16', matchId: 't5', playerKey: 'p1', allowedRanks: [1], matchNo: 5, quarterNo: 3, halfNo: 2 },
     { roundKey: 'round16', matchId: 't5', playerKey: 'p2', allowedRanks: [3], matchNo: 5, quarterNo: 3, halfNo: 2 },
     { roundKey: 'round16', matchId: 't6', playerKey: 'p1', allowedRanks: [1], matchNo: 6, quarterNo: 3, halfNo: 2 },
-    { roundKey: 'round16', matchId: 't6', playerKey: 'p2', allowedRanks: [2], matchNo: 6, quarterNo: 3, halfNo: 2 },
+    { roundKey: 'round16', matchId: 't6', playerKey: 'p2', allowedRanks: [2], matchNo: 6, quarterNo: 3, halfNo: 2, fixedGroup: 'E' },
     { roundKey: 'round16', matchId: 't7', playerKey: 'p1', allowedRanks: [1], matchNo: 7, quarterNo: 4, halfNo: 2 },
     { roundKey: 'round16', matchId: 't7', playerKey: 'p2', allowedRanks: [3], matchNo: 7, quarterNo: 4, halfNo: 2 },
     { roundKey: 'round16', matchId: 't8', playerKey: 'p1', allowedRanks: [1], matchNo: 8, quarterNo: 4, halfNo: 2 },
-    { roundKey: 'round16', matchId: 't8', playerKey: 'p2', allowedRanks: [2], matchNo: 8, quarterNo: 4, halfNo: 2 },
+    { roundKey: 'round16', matchId: 't8', playerKey: 'p2', allowedRanks: [2], matchNo: 8, quarterNo: 4, halfNo: 2, fixedGroup: 'F' },
   ];
 }
 
@@ -644,6 +743,7 @@ function getCandidateEntries(slot, pool, usedNames) {
   return pool.filter(entry => {
     if (!entry?.name || usedNames.has(entry.name)) return false;
     if (!slot.allowedRanks.includes(entry.rank)) return false;
+    if (slot.fixedGroup && entry.groupCode !== slot.fixedGroup) return false;
     return true;
   });
 }
@@ -662,6 +762,7 @@ function scoreCandidate(slot, candidate, placed) {
   if (sameGroupPlaced.length && sameGroupPlaced.every(item => item.slot.halfNo !== slot.halfNo)) {
     score += 5000;
   }
+  if (slot.fixedGroup && slot.fixedGroup === candidate.groupCode) score += 100;
   return score;
 }
 
@@ -697,7 +798,8 @@ function buildAutoSeedMap(groupMap, bracketSize) {
 
       // Luật cứng 3: nếu bảng đó chỉ có 2 VĐV trong Serie hiện tại,
       // bắt buộc tách 2 nửa nhánh để chỉ có thể gặp ở chung kết.
-      if (item.slot.halfNo === slot.halfNo) return false;
+      const sameGroupCount = qualifiersByGroup[entry.groupCode]?.length || 0;
+      if (sameGroupCount <= 2 && item.slot.halfNo === slot.halfNo) return false;
 
       // Nếu có 3 VĐV cùng bảng lọt Serie A thì không thể đảm bảo cả 3 chỉ gặp ở CK,
       // vì sơ đồ chỉ có 2 nửa nhánh. Khi đó vẫn cho phép 2 người cùng nửa nhánh,
@@ -791,6 +893,7 @@ function applyFixedSeeds(data, groupMap, bracketSize) {
   const next = prepareKnockoutData(cloneData(data), bracketSize);
   const seedMap = buildAutoSeedMap(groupMap, bracketSize);
   const drawSlotKeys = new Set(getDrawSlotLabels(bracketSize).map(slot => `${slot.roundKey}.${slot.matchId}.${slot.playerKey}`));
+  if (Number(bracketSize) === 16) return next;
 
   Object.entries(seedMap).forEach(([key, value]) => {
     // Các ô N1-N6 và H3A-H3D là vị trí bốc thăm thủ công.
@@ -831,7 +934,18 @@ export default function Knockout({
   const groupMap = useMemo(() => getGroupDataMap(groupStageData), [groupStageData]);
   const qualifiedLists = useMemo(() => getQualifiedLists(groupMap), [groupMap]);
   const drawNoteItems = useMemo(() => getDrawNoteItems(data, groupMap, normalizedBracketSize), [data, groupMap, normalizedBracketSize]);
-  const drawSlotLabelMap = useMemo(() => getDrawSlotLabelMap(normalizedBracketSize), [normalizedBracketSize]);
+  const drawSlotLabelMap = useMemo(() => {
+    const map = getDrawSlotLabelMap(normalizedBracketSize);
+    if (normalizedBracketSize !== 16) return map;
+    getSlotMeta(16).forEach(slot => {
+      const key = `${slot.roundKey}.${slot.matchId}.${slot.playerKey}`;
+      const name = data?.[slot.roundKey]?.[slot.matchId]?.[slot.playerKey] || '';
+      const entry = getPlayerEntryFromGroupMap(name, groupMap);
+      if (entry?.rank === 2) map[key] = `H2${entry.groupCode}`;
+      if (entry?.rank === 3) map[key] = 'H3';
+    });
+    return map;
+  }, [normalizedBracketSize, data, groupMap]);
   const selectedDrawPlayers = useMemo(() => {
     const selected = [];
     ['t1.p1','t3.p1','t5.p1','t6.p1','t7.p1','t8.p1','t1.p2','t3.p2','t5.p2','t7.p2'].forEach(k=>{
@@ -929,9 +1043,9 @@ export default function Knockout({
     await saveData(next);
   };
 
-  const autoAssignH3Now = async () => {
+  const autoCompleteBracketNow = async () => {
     if (!adminMode || normalizedBracketSize !== 16) return;
-    const result = autoAssignThirdPlaces(data, groupMap);
+    const result = autoCompleteSerieABracket(data, groupMap);
     if (!result.ok) {
       window.alert(result.message);
       return;
@@ -1076,7 +1190,7 @@ export default function Knockout({
             {normalizedBracketSize === 16 && (
               <button
                 type="button"
-                onClick={autoAssignH3Now}
+                onClick={autoCompleteBracketNow}
                 className="flex items-center justify-center gap-2 rounded-xl border border-purple-300 bg-purple-50 px-4 py-3 font-black text-purple-700 hover:bg-purple-100"
               >
                 Tự Ghép H3
@@ -1129,7 +1243,7 @@ export default function Knockout({
       <div className="mt-5 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
         {normalizedBracketSize === 8
           ? 'Ghi chú Serie B: hạng tư bảng A-F tự cập nhật từ vòng bảng. Hai vị trí H3 còn lại chọn bằng dropdown.'
-          : 'Ghi chú Serie A: N1-N6 là thứ tự bốc thăm của 6 Nhất bảng. Chọn đủ 4 H3 rồi bấm Tự Ghép H3 để app tự hoán đổi H3A-H3D. App bắt buộc tránh gặp lại ở vòng 1/8 và tứ kết, đồng thời ưu tiên tách khác nửa nhánh nếu có thể; nếu bắt buộc thì mới cho phép gặp lại ở bán kết.'}
+          : 'Ghi chú Serie A: BTC chỉ bốc N1-N6. Sau đó bấm Tự Hoàn Thiện Nhánh để app tự xếp H2A-H2F và 4 Hạng 3 xuất sắc, tránh tái đấu ở vòng 1/8 và Tứ kết, đồng thời ưu tiên tách sang hai nửa nhánh.'}
       </div>
     </div>
   );

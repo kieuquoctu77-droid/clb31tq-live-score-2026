@@ -324,6 +324,13 @@ function getGroupDataMap(groupStageData = {}) {
 }
 
 
+function isGroupStageCompleted(groupMap = {}) {
+  return GROUP_CODES.every(code => {
+    const group = groupMap[code];
+    return (group?.players || []).length === 4 && (group?.standings || []).length === 4 && group.standings.every(player => player.played >= 3);
+  });
+}
+
 function getQualifiedLists(groupMap) {
   const firsts = GROUP_CODES.map(code => groupMap[code]?.first).filter(Boolean);
   const seconds = GROUP_CODES.map(code => groupMap[code]?.second).filter(Boolean);
@@ -827,6 +834,7 @@ export default function Knockout({
 
   const groupMap = useMemo(() => getGroupDataMap(groupStageData), [groupStageData]);
   const qualifiedLists = useMemo(() => getQualifiedLists(groupMap), [groupMap]);
+  const groupStageCompleted = useMemo(() => isGroupStageCompleted(groupMap), [groupMap]);
   const drawNoteItems = useMemo(() => getDrawNoteItems(data, groupMap, normalizedBracketSize), [data, groupMap, normalizedBracketSize]);
   const drawSlotLabelMap = useMemo(() => getDrawSlotLabelMap(normalizedBracketSize), [normalizedBracketSize]);
   const selectedDrawPlayers = useMemo(() => {
@@ -903,13 +911,13 @@ export default function Knockout({
   }, [database, dbPath, storageKey, normalizedBracketSize, defaultData]);
 
   useEffect(() => {
-    if (!database) return;
+    if (!database || !groupStageCompleted) return;
     const seeded = applyFixedSeeds(data, groupMap, normalizedBracketSize);
     if (JSON.stringify(seeded) !== JSON.stringify(data)) {
       saveData(seeded);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [database, groupStageData, normalizedBracketSize]);
+  }, [database, groupStageData, normalizedBracketSize, groupStageCompleted]);
 
   const saveData = async nextData => {
     const payload = prepareKnockoutData(nextData, normalizedBracketSize);
@@ -1091,6 +1099,13 @@ export default function Knockout({
         )}
       </div>
 
+      {!groupStageCompleted && (
+        <div className="mb-5 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-center shadow-sm">
+          <div className="font-black text-amber-800">⚠️ Nhánh đấu dự kiến theo thứ hạng vòng bảng</div>
+          <div className="mt-1 text-sm font-bold text-amber-700">Tên VĐV sẽ tự động hiển thị sau khi toàn bộ 6 bảng kết thúc.</div>
+        </div>
+      )}
+
       {normalizedBracketSize === 8 ? (
         <SerieBBracket
           data={data}
@@ -1104,6 +1119,7 @@ export default function Knockout({
           playerOptions={qualifiedLists.all}
           slotLabelMap={drawSlotLabelMap}
           playerOptionsBySlot={playerOptionsBySlot}
+          groupStageCompleted={groupStageCompleted}
         />
       ) : (
         <SerieABracket
@@ -1120,6 +1136,7 @@ export default function Knockout({
           slotLabelMap={drawSlotLabelMap}
           playerOptionsBySlot={playerOptionsBySlot}
           selectedDrawPlayers={selectedDrawPlayers}
+          groupStageCompleted={groupStageCompleted}
         />
       )}
 
@@ -1132,7 +1149,7 @@ export default function Knockout({
   );
 }
 
-function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore, playerOptions, slotLabelMap = {}, playerOptionsBySlot = {}, selectedDrawPlayers = [] }) {
+function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore, playerOptions, slotLabelMap = {}, playerOptionsBySlot = {}, selectedDrawPlayers = [], groupStageCompleted = false }) {
   return (
     <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-red-100">
       <div className="min-w-[1080px]">
@@ -1159,6 +1176,7 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
                 playerOptions={playerOptions}
                 slotLabelMap={slotLabelMap}
                 playerOptionsBySlot={playerOptionsBySlot}
+                groupStageCompleted={groupStageCompleted}
                 selectedDrawPlayers={selectedDrawPlayers}
                 size="small"
               />
@@ -1179,6 +1197,7 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
                 playerOptions={playerOptions}
                 slotLabelMap={slotLabelMap}
                 playerOptionsBySlot={playerOptionsBySlot}
+                groupStageCompleted={groupStageCompleted}
                 color="blue"
               />
               <RightConnector />
@@ -1198,6 +1217,7 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
                 playerOptions={playerOptions}
                 slotLabelMap={slotLabelMap}
                 playerOptionsBySlot={playerOptionsBySlot}
+                groupStageCompleted={groupStageCompleted}
                 color="emerald"
               />
               <RightConnector />
@@ -1217,6 +1237,7 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
                 playerOptions={playerOptions}
                 slotLabelMap={slotLabelMap}
                 playerOptionsBySlot={playerOptionsBySlot}
+                groupStageCompleted={groupStageCompleted}
                 color="yellow"
                 finalMatch
               />
@@ -1230,7 +1251,7 @@ function SerieABracket({ data, round16Entries, quarterEntries, semiEntries, rowH
   );
 }
 
-function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore, playerOptions, slotLabelMap = {}, playerOptionsBySlot = {} }) {
+function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode, chooseWinner, updatePlayer, updateScore, playerOptions, slotLabelMap = {}, playerOptionsBySlot = {}, groupStageCompleted = false }) {
   return (
     <div className="overflow-x-auto rounded-3xl bg-[#fffdf7] p-4 ring-1 ring-emerald-100">
       <div className="min-w-[980px]">
@@ -1253,6 +1274,7 @@ function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode
                 playerOptions={playerOptions}
                 slotLabelMap={slotLabelMap}
                 playerOptionsBySlot={playerOptionsBySlot}
+                groupStageCompleted={groupStageCompleted}
                 color="green"
               />
               <RightConnector />
@@ -1272,6 +1294,7 @@ function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode
                 playerOptions={playerOptions}
                 slotLabelMap={slotLabelMap}
                 playerOptionsBySlot={playerOptionsBySlot}
+                groupStageCompleted={groupStageCompleted}
                 color="emerald"
               />
               <RightConnector />
@@ -1291,6 +1314,7 @@ function SerieBBracket({ data, quarterEntries, semiEntries, rowHeight, adminMode
                 playerOptions={playerOptions}
                 slotLabelMap={slotLabelMap}
                 playerOptionsBySlot={playerOptionsBySlot}
+                groupStageCompleted={groupStageCompleted}
                 color="yellow"
                 finalMatch
               />
@@ -1386,6 +1410,7 @@ function VerticalMatchCard({
   slotLabelMap = {},
   playerOptionsBySlot = {},
   selectedDrawPlayers = [],
+  groupStageCompleted = false,
   color = 'red',
   finalMatch = false,
   size = 'normal',
@@ -1426,6 +1451,7 @@ function VerticalMatchCard({
           compact={size === 'small'}
           options={getSlotOptions('p1')}
           slotLabel={getSlotLabel('p1')}
+          groupStageCompleted={groupStageCompleted}
         />
         <ScoreInputRow
           score1={match.score1}
@@ -1447,15 +1473,17 @@ function VerticalMatchCard({
           compact={size === 'small'}
           options={getSlotOptions('p2')}
           slotLabel={getSlotLabel('p2')}
+          groupStageCompleted={groupStageCompleted}
         />
       </div>
     </div>
   );
 }
 
-function PlayerRow({ value, selected, onChange, adminMode, placeholder, compact = false, options = [], slotLabel = '' }) {
+function PlayerRow({ value, selected, onChange, adminMode, placeholder, compact = false, options = [], slotLabel = '', groupStageCompleted = false }) {
   const displayValue = slotLabel && isPlaceholder(value) ? '' : value || '';
-  const visibleValue = slotLabel && isPlaceholder(value) ? '-' : value || '-';
+  const pendingLabel = slotLabel || (isPlaceholder(value) ? value : placeholder);
+  const visibleValue = !groupStageCompleted ? pendingLabel : (slotLabel && isPlaceholder(value) ? slotLabel : value || '-');
   return (
     <div
       className={classNames(

@@ -1171,7 +1171,7 @@ export default function Knockout({
             🏓 SƠ ĐỒ KNOCK OUT {title} - {normalizedBracketSize} VĐV
           </div>
           <div className="mt-1 text-sm font-bold text-slate-500">
-            VĐV có hạng cố định sẽ tự cập nhật từ vòng bảng. Các vị trí bốc thăm chọn bằng dropdown để tránh sai sót.
+            BTC bốc thăm N1-N6. Hệ thống tự xếp H2 và 4 VĐV Hạng 3 xuất sắc để hạn chế tái đấu sớm.
           </div>
           <div className="mt-1 text-xs font-bold text-slate-400">
             Trạng thái: {connected ? 'Realtime Firebase' : 'Local'}
@@ -1193,7 +1193,7 @@ export default function Knockout({
                 onClick={autoCompleteBracketNow}
                 className="flex items-center justify-center gap-2 rounded-xl border border-purple-300 bg-purple-50 px-4 py-3 font-black text-purple-700 hover:bg-purple-100"
               >
-                Tự Ghép H3
+                Tự Hoàn Thiện Nhánh
               </button>
             )}
             <button

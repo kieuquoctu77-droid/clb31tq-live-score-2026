@@ -697,8 +697,7 @@ function buildAutoSeedMap(groupMap, bracketSize) {
 
       // Luật cứng 3: nếu bảng đó chỉ có 2 VĐV trong Serie hiện tại,
       // bắt buộc tách 2 nửa nhánh để chỉ có thể gặp ở chung kết.
-      const sameGroupCount = qualifiersByGroup[entry.groupCode]?.length || 0;
-      if (sameGroupCount <= 2 && item.slot.halfNo === slot.halfNo) return false;
+      if (item.slot.halfNo === slot.halfNo) return false;
 
       // Nếu có 3 VĐV cùng bảng lọt Serie A thì không thể đảm bảo cả 3 chỉ gặp ở CK,
       // vì sơ đồ chỉ có 2 nửa nhánh. Khi đó vẫn cho phép 2 người cùng nửa nhánh,

@@ -767,7 +767,13 @@ function buildAutoSeedMap(groupMap, bracketSize) {
   // Chạy lần 1 bằng luật nghiêm ngặt. Nếu thiếu người do ràng buộc quá chặt,
   // chạy lần 2 với luật nới lỏng để app vẫn có sơ đồ sử dụng được.
   const strictResult = runSearch(true);
-  const finalResult = strictResult.placed.length === availableSlots.length ? strictResult : runSearch(false);
+
+  if (strictResult.placed.length !== availableSlots.length) {
+    console.warn('Khong tim duoc nhanh dau thoa dieu kien tranh tai dau cung bang o Tu Ket.');
+    return {};
+  }
+
+  const finalResult = strictResult;
 
   return finalResult.placed.reduce((acc, item) => {
     const key = `${item.slot.roundKey}.${item.slot.matchId}.${item.slot.playerKey}`;
